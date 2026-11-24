@@ -149,3 +149,15 @@ The 1.1.1.13 executable function at RVA `0x0DEB70` directly walks a building tem
 - It reads the descriptor's resource-record vector begin/end at `+0x00/+0x08`; the size check and count logic use `0x10`-byte records.
 
 This independently supports `TEMPLATE_STORES_BEGIN/END`, `STORE_STRIDE`, `STORE_TRANSPORT`, `STORE_ROLE`, `STORE_RECORDS_BEGIN/END`, and `RECORD_STRIDE` on 1.1.1.13. The descriptor capacity and block-input/output flag offsets still need their own field-level checks.
+
+## Live storage-descriptor fields
+
+A later section of the 1.1.1.13 template/storage processing routine at RVA `0x0DECC0` iterates the same `0xE0` descriptors and directly checks their fields:
+
+- `descriptor + 0x94` is read as the role and compared against role codes.
+- `descriptor + 0x90` is compared against the requested transport.
+- `descriptor + 0x85` and `descriptor + 0x84` are read as byte flags and compared independently.
+- `descriptor + 0x8C` is read as a float and compared against a requested capacity value.
+- The resource-record vector at `+0x00/+0x08` is measured in `0x10`-byte records.
+
+This confirms the source offsets `STORE_ROLE`, `STORE_TRANSPORT`, `STORE_BLOCK_INPUT`, `STORE_BLOCK_OUTPUT`, and `STORE_CAPACITY` against the 1.1.1.13 executable. The semantic naming of the two byte flags follows the upstream storage logic; their exact polarity should still be checked in-game before changing behavior.
