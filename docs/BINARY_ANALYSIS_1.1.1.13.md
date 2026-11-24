@@ -85,3 +85,14 @@ The previous blocker at the old RVA `0x706C00` is now resolved for static mappin
 - The source constant `RVA_GENERIC_STORAGE_UI` has therefore been changed to `0x00706DA0`; the existing runtime prologue check remains enabled.
 
 This is a semantically supported static mapping, but it still requires a fresh CI build and in-game validation. Other object layouts and the aggregate-refresh/building-highlight helpers remain unresolved.
+
+## Rebuild after UI-hook mapping
+
+The source change to `RVA_GENERIC_STORAGE_UI = 0x00706DA0` passed the Windows CI build:
+
+- Workflow run: [45494164122](https://github.com/Blakosta/WRSR-EnhancedStorageManagement-1.1.1.13/actions/runs/45494164122) — success.
+- C++ build, package verification, and artifact upload all passed.
+- Candidate artifact ID: `14966508623` (`EnhancedStorageManagement-WRSR-1.1.1.13-candidate`).
+- Artifact digest: `sha256:fe50934c9fc8b7c737f1d0d00710654b3b82dfe570d41ecd69cc8826fc7f2b98`.
+
+The candidate is still not a release: this CI run proves compilation/package checks only. The game manifest and the remaining object-layout/helper validations plus an in-game test are still outstanding.
