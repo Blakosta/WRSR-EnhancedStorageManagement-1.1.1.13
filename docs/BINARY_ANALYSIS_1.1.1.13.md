@@ -74,3 +74,14 @@ The source's `RVA_GAME_ROOT_SLOT = 0x9941F0` has been checked against the 1.1.1.
 - This validates the global slot's image location and continued use, but does **not** independently validate every object-member offset reached through the pointer. In particular, `GAME_C3D_BUILDING_MANAGER = 0xFF8` and all building/template/storage layouts remain separate checks.
 
 This is an additional static-analysis result only; it does not remove the generic-storage UI blocker or establish in-game compatibility.
+
+## Generic storage UI hook: semantic mapping found
+
+The previous blocker at the old RVA `0x706C00` is now resolved for static mapping. The replacement selected in the source is `0x706DA0`:
+
+- `0x706DA0` is an exact runtime-function entry in the 1.1.1.13 `.pdata` map, with the expected 15-byte prologue `48 8B C4 55 53 56 57 41 54 41 55 41 56 41 57`.
+- A direct caller at VA `0x14071E857` sets `RCX`, `RDX`, `R8`, and `R9`, then populates all twelve stack argument slots from `[rsp+0x20]` through `[rsp+0x78]` before calling `0x140706DA0`.
+- The caller's argument arrangement matches the upstream `GenericStorageUiFn` ABI: four register arguments followed by twelve stack arguments, including pointer/float/integer/byte positions in the expected order. This is much stronger evidence than a matching prologue alone and distinguishes it from the rejected `0x705380` function, whose caller consumes a float return value.
+- The source constant `RVA_GENERIC_STORAGE_UI` has therefore been changed to `0x00706DA0`; the existing runtime prologue check remains enabled.
+
+This is a semantically supported static mapping, but it still requires a fresh CI build and in-game validation. Other object layouts and the aggregate-refresh/building-highlight helpers remain unresolved.
