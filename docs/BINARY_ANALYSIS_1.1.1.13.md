@@ -126,3 +126,15 @@ The verified building-simulation dispatcher at RVA `0x139A70` provides direct fi
 - It reads the building completion float at `building + 0x604` during its eligibility checks.
 
 These observations support `GAME_BUILDINGS_BEGIN = 0x11B08`, `GAME_BUILDINGS_END = 0x11B10`, `BUILDING_TEMPLATE = 0x318`, `TEMPLATE_RUNTIME_TYPE = 0x360`, and `BUILDING_COMPLETION = 0x604` on 1.1.1.13. They are direct reads in the dispatcher rather than assumptions based on the old build.
+
+## C3DDLL geometry/type layout recheck
+
+The supplied `C3DDLL64.dll` 1.1.1.13 binary independently confirms the C3D layout used by the placement-footprint code. In `Collision2DBBox` (RVA `0x3E350`):
+
+- The type array is addressed through manager `+0xE718`, with each type selected using stride `0x2330`.
+- The live instance array is read from type `+0x2C0`; an instance index is scaled by `0x118` before indexing it. The adjacent vector end field is `+0x2C8` in the manager's type methods.
+- Instance position fields are read at `+0x10`, `+0x14`, and `+0x18`; the discrete rotation step is read at `+0x1C`.
+- The type's primary mesh pointer is read at `+0x58`, secondary mesh at `+0xA0`, and flip-Z flag at `+0x45F`.
+- Mesh bounds are read at `+0x74`, `+0x7C`, `+0x80`, and `+0x88`.
+
+This corroborates `C3D_TYPES_BEGIN`, `C3D_TYPE_STRIDE`, `C3D_TYPE_INSTANCES_BEGIN/END`, `C3D_INSTANCE_STRIDE`, the instance position/rotation offsets, both mesh-pointer offsets, `C3D_TYPE_FLIP_Z`, and the mesh bounding-box offsets against the exact supplied DLL. The helper addresses previously verified in the same DLL remain unchanged.
