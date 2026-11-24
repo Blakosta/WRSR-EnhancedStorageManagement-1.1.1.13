@@ -160,3 +160,14 @@ A later section of the 1.1.1.13 template/storage processing routine at RVA `0x0D
 - The resource-record vector at `+0x00/+0x08` is measured in `0x10`-byte records.
 
 This confirms the source offsets `STORE_ROLE`, `STORE_TRANSPORT`, `STORE_BLOCK_INPUT`, `STORE_BLOCK_OUTPUT`, and `STORE_CAPACITY` against the 1.1.1.13 executable. The semantic naming of the two byte flags follows the upstream storage logic; their exact polarity should still be checked in-game before changing behavior.
+
+## Construction-tool and cursor layout
+
+The 1.1.1.13 construction-tool frame at RVA `0x2F0E90` and tool-catalog code provide direct evidence for the following game/tool fields:
+
+- The current tool pointer is read from `game + 0xD428`; its template pointer is read at `tool + 0x48`.
+- The tool catalog vector uses begin/end at `game + 0xD280/+0xD288`. Its element count is computed by division by `0x2D0`, and the loop indexes entries with stride `0x2D0`.
+- The cursor position is written/read as X/Y at `game + 0xF6C/+0xF70` and Z at `game + 0xF74`.
+- Cursor rotation is read and updated at `game + 0xF94`.
+
+This corroborates `GAME_CURRENT_TOOL`, `TOOL_TEMPLATE`, `GAME_TOOLS_BEGIN/END`, `TOOL_STRIDE`, `GAME_CURSOR_X/Y/Z`, and `GAME_CURSOR_ROTATION` on 1.1.1.13.
