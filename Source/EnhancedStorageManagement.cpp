@@ -174,8 +174,8 @@ static constexpr usize GAME_C3D_BUILDING_MANAGER = 0xFF8ull;
 // Cargo loaders/unloaders are direct proximity annex gateways. Their
 // resource-flow direction is derived from each building type's own C3D
 // connection-node metadata, not from traversing live network paths.
-// C3DDLL64 1.1.1.13 C3D_BUILDING layout, revalidated in Collision2DBBox and
-// GetRotationStepFromRotation, EditorSetCursorUpdateCopy and Collision2DBBox.
+// C3DDLL64 1.1.1.13 C3D_BUILDING layout, revalidated in Collision2DBBox,
+// GetRotationStepFromRotation and EditorSetCursorUpdateCopy.
 static constexpr usize C3D_ROTATION_STEP_COUNT = 0x48ull;
 static constexpr usize C3D_ROT_MATRIX_FWD_BASE = 0x54ull;
 static constexpr usize C3D_ROT_MATRIX_INV_BASE = 0x94ull;
