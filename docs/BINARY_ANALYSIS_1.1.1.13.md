@@ -39,7 +39,7 @@ These locations require semantic identification before any hook or function poin
 - Generic storage UI: upstream RVA `0x706C00` is not a function entry in the supplied executable; it falls inside the runtime-function range `0x705380–0x706D92`. The short prologue pattern used by the upstream source occurs many times and is not sufficient to identify the replacement.
 - Aggregate storage touch: upstream RVA `0x17AF70` is not a function entry in the supplied executable; it falls inside `0x17AF2F–0x17AF8F`. The correct corresponding function still needs to be identified.
 - Building highlight: upstream RVA `0x40BD60` falls inside `0x40BCA0–0x40C34D`, rather than at a function entry. Its replacement must be mapped by call-site/semantic analysis.
-- Vector grow helper: `0xB1700` is a runtime-function entry in the supplied executable, but its exact semantic equivalence still needs to be confirmed before treating it as fully validated.
+- Vector grow helper: `0xB1700` is a runtime-function entry (`0xB1700–0xB1782`). Its disassembly reads the vector begin/end/capacity fields, compares available pointer slots with the requested additional element count, computes a growth capacity, and tail-calls the allocation/growth routine. This matches the source call shape `VectorGrowU64Fn(vectorBeginField, extraElements)`; it is now considered semantically confirmed for the pointer-vector growth use.
 
 ## Fail-closed safety change
 
@@ -52,3 +52,15 @@ The generic storage UI hook is a separate blocker: the old RVA `0x706C00` does n
 Updating function RVAs is only part of the port. The source also contains many hard-coded 1.1.1.9 object-layout offsets for game globals, buildings, templates, storage descriptors, and C3D structures. Those layouts must be independently checked against 1.1.1.13 before enabling the corresponding runtime features.
 
 No claim of full compatibility or in-game stability is made at this stage. The mod must not be released until all hooks and layouts are verified, the DLL builds, and the game is tested.
+
+
+## Build validation (candidate only)
+
+A Windows GitHub Actions build was added on the adaptation branch. The run completed successfully after removing two obsolete, unreferenced helper-RVA constants that were rejected by the project's `/W4 /WX` warning policy.
+
+- Workflow run: [45493246537](https://github.com/Blakosta/WRSR-EnhancedStorageManagement-1.1.1.13/actions/runs/45493246537)
+- Build result: C++ compilation passed; RML manifest verification passed; PE verification passed; artifact upload passed.
+- Candidate DLL SHA-256: `b73cdc6723fc0f91df04582a3f22689ee7927dcec7e84b506f06d1dc0909b7be`
+- Artifact: `EnhancedStorageManagement-WRSR-1.1.1.13-candidate`
+
+This is only a reproducible build/package check. It does **not** establish runtime compatibility. The manifest still advertises 1.1.1.9 only, and the generic-storage UI hook still fails closed on 1.1.1.13 until its replacement entry is semantically identified. The object layouts also remain unverified. Do not install this artifact as a 1.1.1.13 release.
