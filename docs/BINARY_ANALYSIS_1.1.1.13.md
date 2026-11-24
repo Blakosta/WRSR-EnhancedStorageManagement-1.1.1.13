@@ -36,7 +36,6 @@ The helper RVAs currently remain unchanged.
 
 These locations require semantic identification before any hook or function pointer is changed:
 
-- Generic storage UI: upstream RVA `0x706C00` is not a function entry in the supplied executable; it falls inside the runtime-function range `0x705380–0x706D92`. The short prologue pattern used by the upstream source occurs many times and is not sufficient to identify the replacement. The tempting `0x705380` entry is specifically rejected: a direct caller at `0x71E8DB` consumes its return value from `XMM0` as a float, which is incompatible with the upstream `void` generic-storage-UI function signature. It must not be hooked as the UI routine.
 - Aggregate storage touch: upstream RVA `0x17AF70` is not a function entry in the supplied executable; it falls inside `0x17AF2F–0x17AF8F`. The correct corresponding function still needs to be identified.
 - Building highlight: upstream RVA `0x40BD60` falls inside `0x40BCA0–0x40C34D`, rather than at a function entry. Its replacement must be mapped by call-site/semantic analysis.
 - Vector grow helper: `0xB1700` is a runtime-function entry (`0xB1700–0xB1782`). Its disassembly reads the vector begin/end/capacity fields, compares available pointer slots with the requested additional element count, computes a growth capacity, and tail-calls the allocation/growth routine. This matches the source call shape `VectorGrowU64Fn(vectorBeginField, extraElements)`; it is now considered semantically confirmed for the pointer-vector growth use.
@@ -45,11 +44,11 @@ These locations require semantic identification before any hook or function poin
 
 Commit `7f55bb4174d41c7b6ea09e90cc7898c07d5aedcb` sets the aggregate-storage refresh and native building-highlight function pointers to null on 1.1.1.13. The old RVAs are inside runtime functions, not validated entries; calling them as functions could execute from the middle of unrelated instructions. With these helpers disabled, aggregate visual refresh and the optional green placement highlight are unavailable, but the code no longer calls those two unverified addresses.
 
-The generic storage UI hook is a separate blocker: the old RVA `0x706C00` does not match the expected entry prologue in 1.1.1.13. The current hook admission logic fails closed and returns plugin-start failure rather than installing a speculative hook. A nearby runtime-function start at `0x705380` exists, but its semantic equivalence has not yet been proven; it is not substituted merely because the prologue matches.
+The generic storage UI blocker was subsequently resolved by the ABI-based mapping documented below: source RVA `0x706DA0` now points to the matching runtime-function entry. The rejected `0x705380` candidate remains explicitly excluded.
 
 ## Important remaining work
 
-Updating function RVAs is only part of the port. The source also contains many hard-coded 1.1.1.9 object-layout offsets for game globals, buildings, templates, storage descriptors, and C3D structures. Those layouts must be independently checked against 1.1.1.13 before enabling the corresponding runtime features.
+Updating function RVAs is only part of the port. Several important 1.1.1.13 layouts are now independently corroborated: the global root slot and C3D manager field, building-list/template/completion fields, live building storage vector and descriptor stride, template storage-blueprint vector, storage transport/role/capacity/block flags, and C3D type/instance/mesh geometry fields. Remaining offsets still requiring field-level checks include the game tool/cursor fields, recipe vectors, storage allocation vectors and resource coefficients, building position/instance identity fields, and any other inherited offsets used by active code.
 
 No claim of full compatibility or in-game stability is made at this stage. The mod must not be released until all hooks and layouts are verified, the DLL builds, and the game is tested.
 
