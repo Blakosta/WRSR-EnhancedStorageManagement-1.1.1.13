@@ -1470,7 +1470,7 @@ static u32 c3d_connection_kind_flags(void* game, u8* templ) {
 
 static u32 cargo_template_transport_mask(void* game, u8* templ) {
     if (!templ) return 0;
-    // 1.1.1.9 template+0x778 is the authoritative storage-blueprint vector.
+    // 1.1.1.13 function RVA 0x0DEB70 confirms template+0x778/+0x780 as the storage-blueprint vector.
     // Prefer it over mutable live routing state so specialised aggregate/pipe
     // stations remain classifiable even when their runtime routing store is empty.
     u32 blueprint = template_storage_transport_mask(templ);
