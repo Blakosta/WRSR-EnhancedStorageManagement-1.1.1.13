@@ -116,3 +116,13 @@ The generic storage UI caller at VA `0x14071E857` also independently corroborate
 - It then iterates those elements and passes each one into the generic storage UI routine. This supports both `BUILDING_STORES_BEGIN = 0x970`, `BUILDING_STORES_END = 0x978`, and `STORE_STRIDE = 0xE0` on 1.1.1.13.
 
 These three live-storage layout values are now corroborated by a real caller path. The contents/field offsets inside each `0xE0` descriptor (record vectors, capacity, transport, roles, flags) still need individual checks.
+
+## Building-list and core building/template fields
+
+The verified building-simulation dispatcher at RVA `0x139A70` provides direct field-level corroboration for several upstream offsets:
+
+- It reads the game building-pointer vector begin/end at `game + 0x11B08` and `game + 0x11B10`, computes the count from 8-byte pointers, and iterates the entries.
+- For each building pointer it checks the template pointer at `building + 0x318`, then reads the live template runtime type at `template + 0x360`.
+- It reads the building completion float at `building + 0x604` during its eligibility checks.
+
+These observations support `GAME_BUILDINGS_BEGIN = 0x11B08`, `GAME_BUILDINGS_END = 0x11B10`, `BUILDING_TEMPLATE = 0x318`, `TEMPLATE_RUNTIME_TYPE = 0x360`, and `BUILDING_COMPLETION = 0x604` on 1.1.1.13. They are direct reads in the dispatcher rather than assumptions based on the old build.
