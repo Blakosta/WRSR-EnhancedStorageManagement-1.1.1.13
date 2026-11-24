@@ -64,3 +64,13 @@ A Windows GitHub Actions build was added on the adaptation branch. The run compl
 - Artifact: `EnhancedStorageManagement-WRSR-1.1.1.13-candidate`
 
 This is only a reproducible build/package check. It does **not** establish runtime compatibility. The manifest still advertises 1.1.1.9 only, and the generic-storage UI hook still fails closed on 1.1.1.13 until its replacement entry is semantically identified. The object layouts also remain unverified. Do not install this artifact as a 1.1.1.13 release.
+
+## Global root-slot check
+
+The source's `RVA_GAME_ROOT_SLOT = 0x9941F0` has been checked against the 1.1.1.13 PE layout and code references:
+
+- The RVA falls inside the executable's `.data` virtual range (`0x992000–0xA56718`). The section has a small on-disk raw payload but a much larger virtual size, so the address is part of the mapped zero-initialized data region; the short raw size reported by section tools is not evidence that the slot is outside the image.
+- The disassembly contains numerous RIP-relative references resolving exactly to VA `0x1409941F0` (for example at `0x140005976`, `0x140007C3F`, `0x140007D2D`, and `0x14000836F`). These references confirm that the address remains an actively used global pointer slot in this executable build.
+- This validates the global slot's image location and continued use, but does **not** independently validate every object-member offset reached through the pointer. In particular, `GAME_C3D_BUILDING_MANAGER = 0xFF8` and all building/template/storage layouts remain separate checks.
+
+This is an additional static-analysis result only; it does not remove the generic-storage UI blocker or establish in-game compatibility.
