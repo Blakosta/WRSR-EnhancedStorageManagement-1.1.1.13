@@ -4781,8 +4781,12 @@ extern "C" __declspec(dllexport) int TsmPluginInit(const void* hostPtr, TsmPlugi
 
     g_host = host;
     g_exeBase = host->exeBase;
-    g_aggregateStorageTouch = (AggregateStorageTouchFn)(g_exeBase + RVA_AGGREGATE_STORAGE_TOUCH);
-    g_buildingHighlight = (BuildingHighlightVarargFn)(g_exeBase + RVA_BUILDING_HIGHLIGHT);
+    // These two 1.1.1.9 RVAs resolve to the middle of unrelated/newly laid-out
+    // runtime functions in 1.1.1.13, not validated callable entries. Keep both
+    // optional presentation/refresh helpers disabled until their new signatures
+    // and calling conventions are independently identified.
+    g_aggregateStorageTouch = nullptr;
+    g_buildingHighlight = nullptr;
     g_vectorGrowU64 = (VectorGrowU64Fn)(g_exeBase + RVA_VECTOR_GROW_U64);
     g_collision2DBBox = host->engineModule ? (Collision2DBBoxFn)((u8*)host->engineModule + RVA_C3D_COLLISION_2D_BBOX) : nullptr;
     g_getRotationStep = host->engineModule ? (GetRotationStepFn)((u8*)host->engineModule + RVA_C3D_GET_ROTATION_STEP) : nullptr;
