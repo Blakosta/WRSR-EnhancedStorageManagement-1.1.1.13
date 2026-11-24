@@ -174,7 +174,7 @@ static constexpr usize GAME_C3D_BUILDING_MANAGER = 0xFF8ull;
 // Cargo loaders/unloaders are direct proximity annex gateways. Their
 // resource-flow direction is derived from each building type's own C3D
 // connection-node metadata, not from traversing live network paths.
-// C3DDLL64 1.1.1.9 C3D_BUILDING layout, decompile-backed from
+// C3DDLL64 1.1.1.13 C3D_BUILDING layout, revalidated in Collision2DBBox and
 // GetRotationStepFromRotation, EditorSetCursorUpdateCopy and Collision2DBBox.
 static constexpr usize C3D_ROTATION_STEP_COUNT = 0x48ull;
 static constexpr usize C3D_ROT_MATRIX_FWD_BASE = 0x54ull;
@@ -1679,7 +1679,8 @@ static int load_local_box_from_mesh(u8* mesh, int flipZ, LocalBox2D* out) {
 
 // Resolve the exact prospective native storage footprint used by WRSR's C3D
 // cursor-building path.  EditorSetCursorUpdateCopy and Collision2DBBox in
-// C3DDLL64 1.1.1.9 use the same TYPE geometry and rotation-step matrices.
+// The supplied C3DDLL64 1.1.1.13 Collision2DBBox uses the same TYPE geometry
+// and rotation-step matrices.
 static int current_tool_preview_footprint(void* game, PreviewFootprint* out) {
     if (!game || !out || !g_getRotationStep || !g_vec3TransformCoord) return 0;
     u8* templ = current_tool_template(game);
