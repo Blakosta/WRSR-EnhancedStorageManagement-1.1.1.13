@@ -41,6 +41,12 @@ These locations require semantic identification before any hook or function poin
 - Building highlight: upstream RVA `0x40BD60` falls inside `0x40BCA0–0x40C34D`, rather than at a function entry. Its replacement must be mapped by call-site/semantic analysis.
 - Vector grow helper: `0xB1700` is a runtime-function entry in the supplied executable, but its exact semantic equivalence still needs to be confirmed before treating it as fully validated.
 
+## Fail-closed safety change
+
+Commit `7f55bb4174d41c7b6ea09e90cc7898c07d5aedcb` sets the aggregate-storage refresh and native building-highlight function pointers to null on 1.1.1.13. The old RVAs are inside runtime functions, not validated entries; calling them as functions could execute from the middle of unrelated instructions. With these helpers disabled, aggregate visual refresh and the optional green placement highlight are unavailable, but the code no longer calls those two unverified addresses.
+
+The generic storage UI hook is a separate blocker: the old RVA `0x706C00` does not match the expected entry prologue in 1.1.1.13. The current hook admission logic fails closed and returns plugin-start failure rather than installing a speculative hook. A nearby runtime-function start at `0x705380` exists, but its semantic equivalence has not yet been proven; it is not substituted merely because the prologue matches.
+
 ## Important remaining work
 
 Updating function RVAs is only part of the port. The source also contains many hard-coded 1.1.1.9 object-layout offsets for game globals, buildings, templates, storage descriptors, and C3D structures. Those layouts must be independently checked against 1.1.1.13 before enabling the corresponding runtime features.
