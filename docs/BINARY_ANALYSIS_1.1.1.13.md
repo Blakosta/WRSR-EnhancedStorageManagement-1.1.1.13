@@ -96,3 +96,13 @@ The source change to `RVA_GENERIC_STORAGE_UI = 0x00706DA0` passed the Windows CI
 - Artifact digest: `sha256:fe50934c9fc8b7c737f1d0d00710654b3b82dfe570d41ecd69cc8826fc7f2b98`.
 
 The candidate is still not a release: this CI run proves compilation/package checks only. The game manifest and the remaining object-layout/helper validations plus an in-game test are still outstanding.
+
+## C3D building-manager pointer field
+
+One object-layout field has now gained independent 1.1.1.13 evidence:
+
+- The executable constructor reads the same global root slot at VA `0x1409941F0`, allocates an object of exactly `0xE870` bytes, constructs it, and stores the resulting pointer at root-object offset `+0xFF8` (sequence around `0x140006E79–0x140006E92`).
+- The corresponding teardown path later reads root `+0xFF8`, destroys the object, and frees exactly `0xE870` bytes (around `0x140008CEC–0x140008D1B`).
+- This is consistent with the source's C3D building-manager interpretation: its known `types` vector fields at `+0xE718/+0xE720` fit within that `0xE870` allocation. The global root slot and `GAME_C3D_BUILDING_MANAGER = 0xFF8` therefore have strong constructor/destructor corroboration on 1.1.1.13.
+
+This does not validate the other game/building/template/storage offsets. Those remain a separate reverse-engineering task.
