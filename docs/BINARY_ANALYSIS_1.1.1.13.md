@@ -138,3 +138,14 @@ The supplied `C3DDLL64.dll` 1.1.1.13 binary independently confirms the C3D layou
 - Mesh bounds are read at `+0x74`, `+0x7C`, `+0x80`, and `+0x88`.
 
 This corroborates `C3D_TYPES_BEGIN`, `C3D_TYPE_STRIDE`, `C3D_TYPE_INSTANCES_BEGIN/END`, `C3D_INSTANCE_STRIDE`, the instance position/rotation offsets, both mesh-pointer offsets, `C3D_TYPE_FLIP_Z`, and the mesh bounding-box offsets against the exact supplied DLL. The helper addresses previously verified in the same DLL remain unchanged.
+
+## Template storage-descriptor layout
+
+The 1.1.1.13 executable function at RVA `0x0DEB70` directly walks a building template's storage-blueprint vector:
+
+- It reads vector begin/end at template offsets `+0x778` and `+0x780`.
+- It computes the descriptor count using division by `0xE0`, then indexes descriptors at that stride.
+- For each descriptor it reads transport at `+0x90` and role at `+0x94`.
+- It reads the descriptor's resource-record vector begin/end at `+0x00/+0x08`; the size check and count logic use `0x10`-byte records.
+
+This independently supports `TEMPLATE_STORES_BEGIN/END`, `STORE_STRIDE`, `STORE_TRANSPORT`, `STORE_ROLE`, `STORE_RECORDS_BEGIN/END`, and `RECORD_STRIDE` on 1.1.1.13. The descriptor capacity and block-input/output flag offsets still need their own field-level checks.
