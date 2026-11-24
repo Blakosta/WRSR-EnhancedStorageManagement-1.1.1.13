@@ -106,3 +106,13 @@ One object-layout field has now gained independent 1.1.1.13 evidence:
 - This is consistent with the source's C3D building-manager interpretation: its known `types` vector fields at `+0xE718/+0xE720` fit within that `0xE870` allocation. The global root slot and `GAME_C3D_BUILDING_MANAGER = 0xFF8` therefore have strong constructor/destructor corroboration on 1.1.1.13.
 
 This does not validate the other game/building/template/storage offsets. Those remain a separate reverse-engineering task.
+
+## Live building storage-vector layout
+
+The generic storage UI caller at VA `0x14071E857` also independently corroborates the live building storage-vector layout used by the mod:
+
+- It reads vector begin/end from building offsets `+0x970` and `+0x978`.
+- It subtracts begin from end and computes the element count using the reciprocal-multiply sequence for division by `0xE0` (`0x4924924924924925`, followed by a six-bit shift and sign correction).
+- It then iterates those elements and passes each one into the generic storage UI routine. This supports both `BUILDING_STORES_BEGIN = 0x970`, `BUILDING_STORES_END = 0x978`, and `STORE_STRIDE = 0xE0` on 1.1.1.13.
+
+These three live-storage layout values are now corroborated by a real caller path. The contents/field offsets inside each `0xE0` descriptor (record vectors, capacity, transport, roles, flags) still need individual checks.
