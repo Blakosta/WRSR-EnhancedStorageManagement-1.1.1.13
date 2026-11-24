@@ -103,7 +103,7 @@ static const u8 RESOURCE_TRANSFER_EXPECTED[RESOURCE_TRANSFER_HOOK_SPAN] = {
     0x40,0x53,0x57,0x41,0x54,0x48,0x81,0xEC,0x80,0x00,0x00,0x00,0x41,0x83,0x79,0x44,0xFF
 };
 
-// WRSR 1.1.1.9 live layouts used by the plugin.
+// Layout values originated in upstream 1.1.1.9; verified 1.1.1.13 fields are documented in docs/BINARY_ANALYSIS_1.1.1.13.md.
 static constexpr usize GAME_BUILDINGS_BEGIN = 0x11B08ull;
 static constexpr usize GAME_BUILDINGS_END   = 0x11B10ull;
 static constexpr usize GAME_CURRENT_TOOL     = 0x0D428ull;
@@ -129,8 +129,8 @@ static constexpr usize BUILDING_INSTANCE_ID  = 0x5F4ull;
 static constexpr usize BUILDING_STORES_BEGIN = 0x970ull;
 static constexpr usize BUILDING_STORES_END   = 0x978ull;
 static constexpr usize TOOL_TEMPLATE          = 0x48ull;
-// WRSR 1.1.1.9 live building-definition layout. The runtime simulation
-// dispatcher reads the authoritative building class directly from +0x360:
+// Building-definition layout carried over from upstream. The 1.1.1.13 runtime
+// simulation dispatcher confirms the authoritative building class at +0x360:
 // 5=$TYPE_STORAGE, 6=$TYPE_FACTORY, 7=$TYPE_MINE_*.  Do NOT use the
 // building-editor type-table/index at +0x5E0/+0x610 for loaded native
 // definitions. FUN_140176ff0 reads the live recipe vectors directly from the
