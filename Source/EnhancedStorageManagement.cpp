@@ -73,12 +73,10 @@ static_assert(sizeof(TsmHostCompat) == 0x98, "Tesmio API 4 host ABI drift");
 // Target-build RVAs updated only where exact entry signatures were uniquely verified in WRSR 1.1.1.13.
 static constexpr usize RVA_BUILDING_SIMULATION_DISPATCH = 0x00139A70ull;
 static constexpr usize RVA_CONSTRUCTION_TOOL_FRAME      = 0x002F0E90ull;
-static constexpr usize RVA_AGGREGATE_STORAGE_TOUCH      = 0x0017AF70ull;
 static constexpr usize RVA_GENERIC_STORAGE_UI           = 0x00706C00ull;
 static constexpr usize RVA_FACTORY_CONNECTION_QUERY     = 0x00422BC0ull;
 static constexpr usize RVA_RESOURCE_TRANSFER              = 0x00420290ull;
 static constexpr usize RVA_VECTOR_GROW_U64              = 0x000B1700ull;
-static constexpr usize RVA_BUILDING_HIGHLIGHT           = 0x0040BD60ull;
 static constexpr usize RVA_GAME_ROOT_SLOT               = 0x009941F0ull;
 static constexpr usize RVA_C3D_COLLISION_2D_BBOX        = 0x0003E350ull;
 static constexpr usize RVA_C3D_GET_ROTATION_STEP        = 0x0003A050ull;
