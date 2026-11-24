@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "ultimate-universe.enhanced-storage-management",
+  "name": "Enhanced Storage Management",
+  "version": "1.0.1",
+  "author": "Ultimate-Universe",
+  "description": "Links compatible nearby storages, resource buildings and road/rail freight delivery buildings into unified storage-management pools. Native storage limits remain authoritative, delivery buildings contribute no synthetic capacity, and legitimate WRSR logistics transfers can use the compatible pool without persistent synthetic factory connections or pooled capacities in saves.",
+  "dll": "EnhancedStorageManagement.dll",
+  "loaderApi": {
+    "min": 1,
+    "max": 1
+  },
+  "supportedGameVersions": [
+    "1.1.1.9"
+  ],
+  "requiredSymbols": [],
+  "optionalSymbols": [],
+  "hookIntents": [
+    {
+      "symbol": "wrsr.observed.rva_00139a70",
+      "interaction": "around-hook",
+      "phase": "runtime",
+      "temperature": "WARM"
+    },
+    {
+      "symbol": "wrsr.observed.rva_00420350",
+      "interaction": "around-hook",
+      "phase": "runtime",
+      "temperature": "EXTREME"
+    },
+    {
+      "symbol": "wrsr.construction.tool_frame",
+      "interaction": "post-hook",
+      "phase": "runtime",
+      "temperature": "HOT"
+    },
+    {
+      "symbol": "wrsr.observed.rva_00706c00",
+      "interaction": "around-hook",
+      "phase": "runtime",
+      "temperature": "HOT"
+    },
+    {
+      "symbol": "wrsr.observed.rva_00422c30",
+      "interaction": "post-hook",
+      "phase": "runtime",
+      "temperature": "WARM"
+    }
+  ],
+  "dependencies": [],
+  "conflicts": [],
+  "loadBefore": [],
+  "loadAfter": [
+    "tesmio.dockdistributionoffice",
+    "tesmio.forcenodes",
+    "tesmio.parallelutilities"
+  ],
+  "defaultPriority": 9000,
+  "enabledByDefault": true
+}
