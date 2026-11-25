@@ -120,15 +120,15 @@ static constexpr usize TOOL_STRIDE           = 0x2D0ull;
 static constexpr usize GAME_CURSOR_X         = 0x00F90ull;
 static constexpr usize GAME_CURSOR_Y         = 0x00F94ull;
 static constexpr usize GAME_CURSOR_Z         = 0x00F98ull;
+// The orientation vector begins at +0xF9C; the yaw component is still being verified.
 static constexpr usize GAME_CURSOR_ROTATION  = 0x00F9Cull;
-// FUN_140422C30 resets/fills this temporary std::vector<building*> every query.
-// FUN_1407CDC40 uses it only to decide whether the cargo station should display
+// The 1.2.0.8 factory connection query resets the first temporary result vector here.
+// Downstream freight-station UI consumes the results to decide whether to show
 // language ID 0x712: "This building has no connection to warehouses or factories!".
 static constexpr usize GAME_TEMP_CONNECTIONS_BEGIN = 0x14528ull;
 static constexpr usize GAME_TEMP_CONNECTIONS_END   = 0x14530ull;
 static constexpr usize GAME_TEMP_CONNECTIONS_CAP   = 0x14538ull;
 static constexpr usize BUILDING_TEMPLATE     = 0x318ull;
-// Position fields remain inherited from upstream and are not yet independently mapped.
 static constexpr usize BUILDING_COMPLETION   = 0x604ull;
 // 1.2.0.8 simulation dispatch reads building+0x5F4 as its C3D instance ID.
 static constexpr usize BUILDING_INSTANCE_ID  = 0x5F4ull;
