@@ -171,3 +171,13 @@ The 1.1.1.13 construction-tool frame at RVA `0x2F0E90` and tool-catalog code pro
 - Cursor rotation is read and updated at `game + 0xF94`.
 
 This corroborates `GAME_CURRENT_TOOL`, `TOOL_TEMPLATE`, `GAME_TOOLS_BEGIN/END`, `TOOL_STRIDE`, `GAME_CURSOR_X/Y/Z`, and `GAME_CURSOR_ROTATION` on 1.1.1.13.
+
+## Recipe vectors: separate input/output rate fields
+
+The building simulation/production routine at RVA `0x177010` directly verifies the recipe layout on 1.1.1.13:
+
+- The building's template pointer is read at building `+0x318`.
+- Input/consumption vector begin/end are template `+0x688/+0x690`. The routine divides the byte length by `0x10`, indexes records with stride `0x10`, reads the resource pointer at record `+0x00`, and reads its rate at record `+0x08`.
+- Output/production vector begin/end are template `+0x6B8/+0x6C0`. It also divides by `0x10`, indexes at stride `0x10`, reads the resource pointer at `+0x00`, but reads the rate at record `+0x0C`.
+
+This confirms both vector offsets and `RECIPE_STRIDE = 0x10`, while revealing that the input and output rate fields are not interchangeable. The source now defines `RECIPE_INPUT_RATE = 0x08` and `RECIPE_OUTPUT_RATE = 0x0C`. Its resource-discovery paths do not request rates, so they now validate the resource pointer without accidentally treating the other record field as a rate.
