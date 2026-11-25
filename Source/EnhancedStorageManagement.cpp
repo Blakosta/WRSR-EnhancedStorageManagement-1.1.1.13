@@ -302,7 +302,7 @@ using VectorPushBackU64Fn = void (__fastcall*)(i64* vectorBeginField, const u64*
 using ResourceTransferFn = u64 (__fastcall*)(i64 game, u64 building, int transferMode, i64 resource,
                                              float amount, float* residual, float param7,
                                              char exactBuilding, i64 param9);
-// FUN_14040BCA0 is a runtime-function entry in 1.1.1.13. Its native callers pass
+// Legacy 1.1.1.13 highlight signature retained only as a reference; 1.2.0.8's
 // game/building in RCX/RDX, mode in R8D, colour selector in R9D, and an enable byte
 // in the fifth stack slot. Native colour selector 0 is green.
 using BuildingHighlightFn = void (__fastcall*)(u64 game, i64 building, int mode,
@@ -1531,7 +1531,7 @@ static u32 c3d_connection_kind_flags(void* game, u8* templ) {
 
 static u32 cargo_template_transport_mask(void* game, u8* templ) {
     if (!templ) return 0;
-    // 1.1.1.13 function RVA 0x0DEB70 confirms template+0x778/+0x780 as the storage-blueprint vector.
+    // 1.2.0.8 building-editor/export paths continue to iterate template+0x778/+0x780 as the storage-blueprint vector.
     // Prefer it over mutable live routing state so specialised aggregate/pipe
     // stations remain classifiable even when their runtime routing store is empty.
     u32 blueprint = template_storage_transport_mask(templ);
@@ -1748,7 +1748,7 @@ static int load_local_box_from_mesh(u8* mesh, int flipZ, LocalBox2D* out) {
 
 // Resolve the exact prospective native storage footprint used by WRSR's C3D
 // cursor-building path.  EditorSetCursorUpdateCopy and Collision2DBBox in
-// The supplied C3DDLL64 1.1.1.13 Collision2DBBox uses the same TYPE geometry
+// The supplied C3DDLL64 1.2.0.8 Collision2DBBox uses this TYPE geometry
 // and rotation-step matrices.
 static int current_tool_preview_footprint(void* game, PreviewFootprint* out) {
     if (!game || !out || !g_getRotationStep || !g_vec3TransformCoord) return 0;
@@ -4909,7 +4909,7 @@ extern "C" __declspec(dllexport) int TsmPluginInit(const void* hostPtr, TsmPlugi
         host->log("[EnhancedStorageManagement] native building-highlight entry unavailable or signature mismatch; placement feedback disabled while storage mechanics remain active");
     }
     if (!g_vectorPushBackU64) {
-        host->log("[EnhancedStorageManagement] native temporary-vector grow helper unavailable; freight station connection-warning UI bridge will remain disabled fail-closed");
+        host->log("[EnhancedStorageManagement] native temporary-vector push-back helper unavailable; freight station connection-warning UI bridge will remain disabled fail-closed");
     }
     return 0;
 }
