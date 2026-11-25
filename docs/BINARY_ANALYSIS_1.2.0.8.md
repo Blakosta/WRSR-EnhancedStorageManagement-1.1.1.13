@@ -42,14 +42,14 @@ These are exported function entries, not guesses based on nearby code. The forme
 - C3D type index: template `+0x418`; the former `+0x410` value is stale.
 - Template recipe vectors: input `+0x688/+0x690`, output `+0x6B8/+0x6C0`; records are 0x10 bytes.
 - Template storage-blueprint vector: `+0x778/+0x780`; descriptors use the same 0xE0 stride and resource records use 0x10-byte elements.
-- C3D manager type vector: manager `+0xE718/+0xE720), type stride `0x2330`.
-- Each C3D type's instance vector: `type+0x2C0/+0x2C8), instance stride `0x118`. Collision code reads world position at `instance+0x10/+0x14/+0x18`; the port now uses these records for building-to-building and cursor-to-building distance checks instead of stale direct building offsets.
+- C3D manager type vector: manager `+0xE718/+0xE720`, type stride `0x2330`.
+- Each C3D type's instance vector: `type+0x2C0/+0x2C8`, instance stride `0x118`. Collision code reads world position at `instance+0x10/+0x14/+0x18`; the port now uses these records for building-to-building and cursor-to-building distance checks instead of stale direct building offsets.
 - C3D type mesh pointers: `type+0x58/+0xA0`; flip-Z flag: `type+0x45F`; rotation-step count: manager `+0x48`.
-- Root pointer slot: executable RVA `0x9DDC88`. Initialization loads the root object from this slot, allocates a `0xE870)-byte C3D manager, and stores it at root `+0x1098); teardown reads and frees the same object/size.
-- Current construction-tool pointer: game `+0xD4C0).
-- Tool catalog vector: game `+0xD280/+0xD288).
-- Cursor position: game `+0xF90/+0xF94/+0xF98), read and updated by the construction-tool frame.
-- Temporary connection query vector 1: game `+0x14528/+0x14530) is reset by the query function and consumed by downstream query/UI paths. `+0x14538) is the inferred capacity field from the three-pointer vector layout; a second vector begins at `+0x14540).
+- Root pointer slot: executable RVA `0x9DDC88`. Initialization loads the root object from this slot, allocates a `0xE870`-byte C3D manager, and stores it at root `+0x1098`; teardown reads and frees the same object/size.
+- Current construction-tool pointer: game `+0xD4C0`.
+- Tool catalog vector: game `+0xD280/+0xD288`.
+- Cursor position: game `+0xF90/+0xF94/+0xF98`, read and updated by the construction-tool frame.
+- Temporary connection query vector 1: game `+0x14528/+0x14530` is reset by the query function and consumed by downstream query/UI paths. `+0x14538` is the inferred capacity field from the three-pointer vector layout; a second vector begins at `+0x14540`.
 
 ## Native temporary-vector append
 
@@ -57,14 +57,14 @@ The old 1.1.1.13 vector-growth RVA `0xB1700` is inside an unrelated function in 
 
 ## Intentionally disabled pending mapping
 
-- Native building-highlight candidate at `0x578290) has a matching runtime-function entry and building/template access pattern, but its ABI is not safe to call yet: the fifth stack argument is treated as a pointer, not the old plugin's integer flag. The `R9B` selector's colour mapping is unresolved. The candidate is not enabled.
+- Native building-highlight candidate at `0x578290` has a matching runtime-function entry and building/template access pattern, but its ABI is not safe to call yet: the fifth stack argument is treated as a pointer, not the old plugin's integer flag. The `R9B` selector's colour mapping is unresolved. The candidate is not enabled.
 - The game stores a 3-float cursor orientation vector starting at `+0xF9C`; the yaw component has not yet been identified. Placement overlay is therefore disabled along with the native highlight.
 - Aggregate-storage visual refresh remains disabled because its native entry has not been mapped.
 
 ## Remaining field-level work
 
 - Cursor rotation component/yaw axis.
-- The current-tool object's template member at `tool+0x48) has not yet been independently checked against 1.2.0.8.
+- The current-tool object's template member at `tool+0x48` has not yet been independently checked against 1.2.0.8.
 - Allocation-vector begin/end and allocation record fields; resource coefficient table layout.
 - Exact resource-transfer downstream routine and any changed internal storage offsets not covered above.
 - The second temporary connection vector's role.
