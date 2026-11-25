@@ -178,7 +178,7 @@ static constexpr i32 BUILDING_TYPE_TECHNICAL_SERVICES = 0x31;
 static constexpr i32 BUILDING_TYPE_RAIL_DISTRIBUTION_OFFICE = 0x34;
 static constexpr i32 BUILDING_TYPE_HEATING_PLANT = 0x46;
 static constexpr i32 BUILDING_TYPE_REPAIR_OFFICE = 0x6C;
-static constexpr usize TEMPLATE_COLLISION_TYPE = 0x410ull;
+static constexpr usize TEMPLATE_COLLISION_TYPE = 0x418ull;
 static constexpr usize GAME_C3D_BUILDING_MANAGER = 0x1098ull;
 
 // Cargo loaders/unloaders are direct proximity annex gateways. Their
