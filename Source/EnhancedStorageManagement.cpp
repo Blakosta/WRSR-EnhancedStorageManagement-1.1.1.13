@@ -815,28 +815,35 @@ static int template_storage_store_matches_host_recipe(u8* storageStore, u8* host
     return 0;
 }
 
-// Completed host lanes are selected by transport and direction for the live
-// mechanics. Placement feedback must additionally intersect the resource IDs
-// in the candidate storage blueprint with the host's actual lane descriptor.
+// Completed host lanes are selected from their live descriptors. A storage
+// template's resource-record vector is not reliably populated before placement,
+// so intersect the host's authoritative resource list with the candidate
+// transport's native resource coefficient instead of requiring template records.
 static int template_store_matches_live_host_store(u8* storageTempl, u8* hostStore,
                                                     i32 transport) {
-    if (!storageTempl || !hostStore || !readable(hostStore, STORE_STRIDE)) return 0;
+    if (!storageTempl || !hostStore || !readable(hostStore, STORE_STRIDE) ||
+        !supported_annex_transport(transport)) return 0;
     u64 begin = 0;
     usize count = 0;
     if (!template_store_vector(storageTempl, &begin, &count)) return 0;
+    int hasCandidateTransport = 0;
     for (usize i = 0; i < count; ++i) {
         u8* blueprint = (u8*)(begin + i * STORE_STRIDE);
         if (read_i32(blueprint + STORE_TRANSPORT) != transport) continue;
         float capacity = read_f32(blueprint + STORE_CAPACITY);
         if (!finite_reasonable(capacity) || capacity <= 0.000001f) continue;
-        u64 rb = read_u64(blueprint + STORE_RECORDS_BEGIN);
-        u64 re = read_u64(blueprint + STORE_RECORDS_END);
-        usize rc = 0;
-        if (!valid_vector(rb, re, RECORD_STRIDE, 256, &rc)) continue;
-        for (usize ri = 0; ri < rc; ++ri) {
-            u8* resource = (u8*)read_u64((u8*)(rb + ri * RECORD_STRIDE) + RECORD_RESOURCE);
-            if (resource && find_resource_record(hostStore, resource)) return 1;
-        }
+        hasCandidateTransport = 1;
+        break;
+    }
+    if (!hasCandidateTransport) return 0;
+
+    u64 rb = read_u64(hostStore + STORE_RECORDS_BEGIN);
+    u64 re = read_u64(hostStore + STORE_RECORDS_END);
+    usize rc = 0;
+    if (!valid_vector(rb, re, RECORD_STRIDE, 256, &rc)) return 0;
+    for (usize ri = 0; ri < rc; ++ri) {
+        u8* resource = (u8*)read_u64((u8*)(rb + ri * RECORD_STRIDE) + RECORD_RESOURCE);
+        if (resource && resource_coefficient(resource, transport) > 0.0f) return 1;
     }
     return 0;
 }
