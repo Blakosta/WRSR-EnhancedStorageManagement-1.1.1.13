@@ -193,3 +193,11 @@ This provides a second independent caller path for the live storage vector, desc
 The 1.1.1.13 building collision/selection path at VA `0x14013819B` reads the building's template pointer at `building + 0x318`, the building instance ID at `building + 0x5F4`, and the template collision type at `template + 0x410`. It then loads the global root slot at `0x1409941F0`, follows root `+0xFF8` to the C3D building manager, and passes the collision type and instance ID into the manager's collision/lookup methods. The same field reads are repeated in the paired lookup call at `0x1401381BF–0x1401381E1`.
 
 This directly corroborates `BUILDING_TEMPLATE = 0x318`, `BUILDING_INSTANCE_ID = 0x5F4`, `TEMPLATE_COLLISION_TYPE = 0x410`, `GAME_ROOT_SLOT = 0x9941F0`, and `GAME_C3D_BUILDING_MANAGER = 0xFF8` for the C3D identity path on 1.1.1.13. It does not independently validate the separate `BUILDING_POSITION_X/Y/Z` offsets used by the mod's proximity calculations.
+
+## Allocation records and resource coefficients
+
+The 1.1.1.13 resource-transfer path at RVA `0x4243C0` directly reads the allocation-vector pointer at live store descriptor `+0x18`. It indexes allocation records with a `0x10`-byte stride (the loop index is doubled and then scaled by eight), reading the allocation weight as a float at record `+0x08` and the active flag at `+0x0C`. This corroborates `STORE_ALLOC_BEGIN = 0x18`, `ALLOC_STRIDE = 0x10`, `ALLOC_WEIGHT = 0x08`, and `ALLOC_ACTIVE = 0x0C`.
+
+The same routine reads the resource coefficient using `resource + 0xCC + transport * 0x20` (instructions around `0x424C7C` and `0x424CFD`) and multiplies it by the store capacity at descriptor `+0x8C`. This independently confirms `RESOURCE_COEFF_BASE = 0xCC`, `RESOURCE_COEFF_STRIDE = 0x20`, `STORE_CAPACITY = 0x8C`, and the transport field at `+0x90`.
+
+The allocation vector's end pointer at descriptor `+0x20` is still not independently identified in this specific routine; its source constant remains an inherited value pending a direct reference check.
