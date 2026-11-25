@@ -302,9 +302,9 @@ using VectorPushBackU64Fn = void (__fastcall*)(i64* vectorBeginField, const u64*
 using ResourceTransferFn = u64 (__fastcall*)(i64 game, u64 building, int transferMode, i64 resource,
                                              float amount, float* residual, float param7,
                                              char exactBuilding, i64 param9);
-// Legacy 1.1.1.13 highlight signature retained only as a reference; 1.2.0.8's
-// game/building in RCX/RDX, mode in R8D, colour selector in R9D, and an enable byte
-// in the fifth stack slot. Native colour selector 0 is green.
+// Legacy highlight signature retained only as a reference. The 1.2.0.8
+// candidate at RVA 0x578290 has a pointer-valued fifth stack argument and an
+// unresolved colour-selector mapping, so this function pointer is never bound.
 using BuildingHighlightFn = void (__fastcall*)(u64 game, i64 building, int mode,
                                                int colorSelector, int enabled);
 struct C3DVector3 { float x; float y; float z; };
