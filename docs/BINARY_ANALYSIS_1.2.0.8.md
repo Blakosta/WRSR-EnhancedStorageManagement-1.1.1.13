@@ -45,7 +45,7 @@ These are exported function entries, not guesses based on nearby code. The forme
 
 ## Intentionally disabled pending mapping
 
-- Native building-highlight function and its colour-selector semantics. The new game stores a 3-float cursor orientation vector starting at `+0xF9C`; the yaw component has not yet been identified. The old highlight RVA/signature does not match the new executable; source constant is set to zero, so the placement overlay fails closed.
+- Native building-highlight candidate at `0x578290` has a matching runtime-function entry and building/template access pattern, but its ABI is not yet safe to call: the fifth stack argument is treated as a pointer, not the old plugin's integer flag. The `R9B` selector's colour mapping is also unresolved. The candidate is therefore not enabled. The new game stores a 3-float cursor orientation vector starting at `+0xF9C`; the yaw component has not yet been identified. The old highlight RVA/signature does not match the new executable; source constant is set to zero, so the placement overlay fails closed.
 - Native vector growth helper at the old `0xB1700` address is invalid in 1.2.0.8. Instead, the port now uses the verified native 8-byte `std::vector::push_back` entry at `0x54960` (14-byte signature checked at runtime). It appends a pointer value and invokes the native growth routine when capacity is exhausted. The helper is widely called by the executable, including from the mapped building dispatcher.
 - Aggregate-storage visual refresh remains disabled, as it was not mapped.
 
