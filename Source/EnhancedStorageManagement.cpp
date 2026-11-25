@@ -1635,10 +1635,17 @@ static int point_hits_building(void* game, u8* target, const C3DVector3* point, 
 }
 
 static int building_center(u8* building, C3DVector3* out) {
+    static int loggedTypeFailure = 0, loggedVectorFailure = 0, loggedInstanceFailure = 0, loggedSuccess = 0;
     if (!building || !out || !readable(building + BUILDING_INSTANCE_ID, sizeof(i32))) return 0;
     u8* templ = building_template(building);
     u8* type = templ ? c3d_type_for_template(nullptr, templ) : nullptr;
-    if (!type || !readable(type + C3D_TYPE_INSTANCES_END, sizeof(u64))) return 0;
+    if (!type || !readable(type + C3D_TYPE_INSTANCES_END, sizeof(u64))) {
+        if (!loggedTypeFailure && g_host && g_host->log) {
+            g_host->log("[EnhancedStorageManagement][diag] building centre: C3D type lookup failed (building=%p template=%p)", building, templ);
+            loggedTypeFailure = 1;
+        }
+        return 0;
+    }
 
     i32 instanceId = read_i32(building + BUILDING_INSTANCE_ID);
     if (instanceId < 0) return 0;
@@ -1646,14 +1653,33 @@ static int building_center(u8* building, C3DVector3* out) {
     u64 end = read_u64(type + C3D_TYPE_INSTANCES_END);
     usize count = 0;
     if (!valid_vector(begin, end, C3D_INSTANCE_STRIDE, 100000, &count) ||
-        (usize)instanceId >= count) return 0;
+        (usize)instanceId >= count) {
+        if (!loggedVectorFailure && g_host && g_host->log) {
+            g_host->log("[EnhancedStorageManagement][diag] building centre: C3D instance vector invalid (id=%d count=%llu begin=%p end=%p)",
+                        instanceId, (unsigned long long)count, (void*)begin, (void*)end);
+            loggedVectorFailure = 1;
+        }
+        return 0;
+    }
 
     u8* instance = (u8*)(begin + (usize)instanceId * C3D_INSTANCE_STRIDE);
-    if (!readable(instance + C3D_INSTANCE_POS_X, sizeof(float) * 3)) return 0;
+    if (!readable(instance + C3D_INSTANCE_POS_X, sizeof(float) * 3)) {
+        if (!loggedInstanceFailure && g_host && g_host->log) {
+            g_host->log("[EnhancedStorageManagement][diag] building centre: C3D instance position unreadable (id=%d instance=%p)", instanceId, instance);
+            loggedInstanceFailure = 1;
+        }
+        return 0;
+    }
     out->x = read_f32(instance + C3D_INSTANCE_POS_X);
     out->y = read_f32(instance + C3D_INSTANCE_POS_Y);
     out->z = read_f32(instance + C3D_INSTANCE_POS_Z);
-    return finite_reasonable(out->x) && finite_reasonable(out->y) && finite_reasonable(out->z);
+    const int valid = finite_reasonable(out->x) && finite_reasonable(out->y) && finite_reasonable(out->z);
+    if (valid && !loggedSuccess && g_host && g_host->log) {
+        g_host->log("[EnhancedStorageManagement][diag] building centre: C3D lookup OK (id=%d xyz=%.2f,%.2f,%.2f)",
+                    instanceId, out->x, out->y, out->z);
+        loggedSuccess = 1;
+    }
+    return valid;
 }
 
 static C3DVector3 lerp_point(const C3DVector3& a, const C3DVector3& b, float t) {
