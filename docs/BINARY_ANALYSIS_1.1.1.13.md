@@ -187,3 +187,9 @@ This confirms both vector offsets and `RECIPE_STRIDE = 0x10`, while revealing th
 The resource-transfer function at RVA `0x420290` calls the building-storage processing routine at `0x4243C0`. That routine independently walks live building stores using `+0x970/+0x978` and stride `0xE0`, reads each store's transport at `+0x90`, and walks the store's resource records through descriptor `+0x00/+0x08` with `0x10`-byte entries. It also checks the template's input and output recipe vectors at `+0x688/+0x690` and `+0x6B8/+0x6C0`, dividing both byte lengths by `0x10` and comparing each record's resource pointer.
 
 This provides a second independent caller path for the live storage vector, descriptor transport, record vector, and both recipe-vector layouts. It does not yet establish the allocation vector at descriptor `+0x18/+0x20`, its element fields, or the resource transport coefficient table.
+
+## Building instance identity and collision type
+
+The 1.1.1.13 building collision/selection path at VA `0x14013819B` reads the building's template pointer at `building + 0x318`, the building instance ID at `building + 0x5F4`, and the template collision type at `template + 0x410`. It then loads the global root slot at `0x1409941F0`, follows root `+0xFF8` to the C3D building manager, and passes the collision type and instance ID into the manager's collision/lookup methods. The same field reads are repeated in the paired lookup call at `0x1401381BF–0x1401381E1`.
+
+This directly corroborates `BUILDING_TEMPLATE = 0x318`, `BUILDING_INSTANCE_ID = 0x5F4`, `TEMPLATE_COLLISION_TYPE = 0x410`, `GAME_ROOT_SLOT = 0x9941F0`, and `GAME_C3D_BUILDING_MANAGER = 0xFF8` for the C3D identity path on 1.1.1.13. It does not independently validate the separate `BUILDING_POSITION_X/Y/Z` offsets used by the mod's proximity calculations.
