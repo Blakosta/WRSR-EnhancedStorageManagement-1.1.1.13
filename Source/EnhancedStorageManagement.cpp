@@ -76,7 +76,7 @@ static constexpr usize RVA_CONSTRUCTION_TOOL_FRAME      = 0x0030DBC0ull;
 static constexpr usize RVA_GENERIC_STORAGE_UI           = 0x0073CA40ull;
 static constexpr usize RVA_FACTORY_CONNECTION_QUERY     = 0x00446B40ull;
 static constexpr usize RVA_RESOURCE_TRANSFER              = 0x00444210ull;
-static constexpr usize RVA_VECTOR_GROW_U64              = 0x00000000ull;
+static constexpr usize RVA_VECTOR_PUSH_BACK_U64        = 0x00054960ull;
 static constexpr usize RVA_BUILDING_HIGHLIGHT              = 0x00000000ull;
 static constexpr usize RVA_GAME_ROOT_SLOT               = 0x009DDC88ull;
 static constexpr usize RVA_C3D_COLLISION_2D_BBOX        = 0x0003E410ull;
@@ -88,6 +88,9 @@ static constexpr usize CONSTRUCTION_HOOK_SPAN           = 14ull;
 static constexpr usize GENERIC_UI_HOOK_SPAN             = 15ull;
 static constexpr usize FACTORY_QUERY_HOOK_SPAN          = 14ull;
 static constexpr usize RESOURCE_TRANSFER_HOOK_SPAN      = 17ull;
+static const u8 VECTOR_PUSH_BACK_U64_EXPECTED[] = {
+    0x48,0x89,0x5C,0x24,0x08,0x57,0x48,0x83,0xEC,0x20,0x48,0x8B,0x41,0x08
+};
 static const u8 DISPATCH_EXPECTED[DISPATCH_HOOK_SPAN] = {
     0x48,0x8B,0xC4,0x55,0x41,0x54,0x41,0x55,0x41,0x56,0x41,0x57,0x48,0x8D,0xA8,0x78,0xFA,0xFF,0xFF
 };
@@ -300,7 +303,7 @@ using GenericStorageUiFn = void (__fastcall*)(i64 param1, i64* param2, i64* para
 using FactoryConnectionQueryFn = void (__fastcall*)(i64 game, u64 building, int filterType,
                                                     u64 param4, u64 param5, int queryMode,
                                                     char directionFlag);
-using VectorGrowU64Fn = void (__fastcall*)(i64* vectorBeginField, u64 extraElements);
+using VectorPushBackU64Fn = void (__fastcall*)(i64* vectorBeginField, const u64* value);
 using ResourceTransferFn = u64 (__fastcall*)(i64 game, u64 building, int transferMode, i64 resource,
                                              float amount, float* residual, float param7,
                                              char exactBuilding, i64 param9);
@@ -411,7 +414,10 @@ static ConstructionToolFrameFn g_originalConstructionFrame = nullptr;
 static GenericStorageUiFn g_originalGenericStorageUi = nullptr;
 static FactoryConnectionQueryFn g_originalFactoryConnectionQuery = nullptr;
 static ResourceTransferFn g_originalResourceTransfer = nullptr;
-static VectorGrowU64Fn g_vectorGrowU64 = nullptr;
+static VectorPushBackU64Fn u8* vectorPushBackEntry = g_exeBase + RVA_VECTOR_PUSH_BACK_U64;
+    g_vectorPushBackU64 = readable(vectorPushBackEntry, sizeof(VECTOR_PUSH_BACK_U64_EXPECTED)) &&
+        bytes_equal(vectorPushBackEntry, VECTOR_PUSH_BACK_U64_EXPECTED, sizeof(VECTOR_PUSH_BACK_U64_EXPECTED))
+        ? (VectorPushBackU64Fn)vectorPushBackEntry : nullptr;
 static AggregateStorageTouchFn g_aggregateStorageTouch = nullptr;
 static BuildingHighlightFn g_buildingHighlight = nullptr;
 static Collision2DBBoxFn g_collision2DBBox = nullptr;
@@ -4566,31 +4572,26 @@ static float group_display_resource_capacity(u8* hostStore, u8* resource) {
 
 
 static int append_temporary_connection_result(i64 game, u8* target) {
-    if (!game || !target || !g_vectorGrowU64 || !completed_building(target)) return 0;
+    if (!game || !target || !g_vectorPushBackU64 || !completed_building(target)) return 0;
     u8* base = (u8*)game;
     if (!readable(base + GAME_TEMP_CONNECTIONS_BEGIN,
-                  GAME_TEMP_CONNECTIONS_CAP - GAME_TEMP_CONNECTIONS_BEGIN + sizeof(u64))) return 0;
+                  GAME_TEMP_CONNECTIONS_CAP - GAME_TEMP_CONNECTIONS_BEGIN + sizeof(u64) * 3)) return 0;
     u64 begin = read_u64(base + GAME_TEMP_CONNECTIONS_BEGIN);
     u64 end = read_u64(base + GAME_TEMP_CONNECTIONS_END);
-    u64 cap = read_u64(base + GAME_TEMP_CONNECTIONS_CAP);
-    if (end < begin || cap < end || ((end - begin) & 7ull) != 0 ||
-        ((cap - begin) & 7ull) != 0 || (end - begin) / 8ull > 1024ull) return 0;
+    if (end < begin || ((end - begin) & 7ull) != 0 ||
+        (end - begin) / 8ull > 1024ull) return 0;
     if (begin && end > begin && !readable((const void*)begin, (usize)(end - begin))) return 0;
     for (u64 at = begin; at < end; at += 8) {
         if (read_u64((const u8*)at) == (u64)target) return 1;
     }
-    if (end == cap) {
-        g_vectorGrowU64((i64*)(base + GAME_TEMP_CONNECTIONS_BEGIN), 1);
-        begin = read_u64(base + GAME_TEMP_CONNECTIONS_BEGIN);
-        end = read_u64(base + GAME_TEMP_CONNECTIONS_END);
-        cap = read_u64(base + GAME_TEMP_CONNECTIONS_CAP);
-        if (end < begin || cap < end || end == cap || !end || !readable((void*)end, 8)) return 0;
-    } else if (!end || !readable((void*)end, 8)) {
-        return 0;
-    }
-    write_u64((u8*)end, (u64)target);
-    write_u64(base + GAME_TEMP_CONNECTIONS_END, end + 8);
-    return 1;
+    const u64 value = (u64)target;
+    g_vectorPushBackU64((i64*)(base + GAME_TEMP_CONNECTIONS_BEGIN), &value);
+    begin = read_u64(base + GAME_TEMP_CONNECTIONS_BEGIN);
+    end = read_u64(base + GAME_TEMP_CONNECTIONS_END);
+    if (end < begin || ((end - begin) & 7ull) != 0 ||
+        (end - begin) / 8ull > 1024ull || end < begin + 8 ||
+        !readable((const void*)(end - 8), sizeof(u64))) return 0;
+    return read_u64((const u8*)(end - 8)) == value;
 }
 
 // Native FUN_1407CDC40 invokes FUN_140422C30 with exactly (-1, mode=2, flag=0)
@@ -4861,14 +4862,14 @@ extern "C" __declspec(dllexport) int TsmPluginInit(const void* hostPtr, TsmPlugi
     g_host = host;
     g_exeBase = host->exeBase;
     // The old aggregate-storage refresh RVA is still unverified on 1.1.1.13.
-    // Native building-highlight and temporary-vector growth entries are not yet
-    // mapped for 1.2.0.8. Keep those optional integrations disabled fail-closed.
+    // Native building-highlight is not yet mapped for 1.2.0.8. Keep that
+    // optional integration disabled fail-closed; the vector push-back helper is verified.
     g_aggregateStorageTouch = nullptr;
     u8* highlightEntry = RVA_BUILDING_HIGHLIGHT ? g_exeBase + RVA_BUILDING_HIGHLIGHT : nullptr;
     g_buildingHighlight = highlightEntry && readable(highlightEntry, sizeof(BUILDING_HIGHLIGHT_EXPECTED)) &&
         bytes_equal(highlightEntry, BUILDING_HIGHLIGHT_EXPECTED, sizeof(BUILDING_HIGHLIGHT_EXPECTED))
         ? (BuildingHighlightFn)highlightEntry : nullptr;
-    g_vectorGrowU64 = RVA_VECTOR_GROW_U64 ? (VectorGrowU64Fn)(g_exeBase + RVA_VECTOR_GROW_U64) : nullptr;
+    g_vectorGrowU64 = RVA_VECTOR_PUSH_BACK_U64 ? (VectorPushBackU64Fn)(g_exeBase + RVA_VECTOR_GROW_U64) : nullptr;
     g_collision2DBBox = host->engineModule ? (Collision2DBBoxFn)((u8*)host->engineModule + RVA_C3D_COLLISION_2D_BBOX) : nullptr;
     g_getRotationStep = host->engineModule ? (GetRotationStepFn)((u8*)host->engineModule + RVA_C3D_GET_ROTATION_STEP) : nullptr;
     g_vec3TransformCoord = host->engineModule ? (Vec3TransformCoordFn)((u8*)host->engineModule + RVA_C3D_VEC3_TRANSFORM_COORD) : nullptr;
