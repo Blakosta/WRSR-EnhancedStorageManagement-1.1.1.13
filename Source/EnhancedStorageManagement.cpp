@@ -460,7 +460,6 @@ static inline int readable(const void* p, usize n) {
 
 static inline u8 read_u8(const u8* p) { return *p; }
 static inline u64 read_u64(const u8* p) { return *(const u64*)p; }
-static inline void write_u64(u8* p, u64 v) { *(u64*)p = v; }
 
 static int bytes_equal(const u8* a, const u8* b, usize n) {
     if (!a || !b) return 0;
