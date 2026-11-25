@@ -11,7 +11,7 @@
     "max": 1
   },
   "supportedGameVersions": [
-    "1.1.1.9"
+    "1.1.1.13"
   ],
   "requiredSymbols": [],
   "optionalSymbols": [],
@@ -23,7 +23,7 @@
       "temperature": "WARM"
     },
     {
-      "symbol": "wrsr.observed.rva_00420350",
+      "symbol": "wrsr.observed.rva_00420290",
       "interaction": "around-hook",
       "phase": "runtime",
       "temperature": "EXTREME"
@@ -35,13 +35,13 @@
       "temperature": "HOT"
     },
     {
-      "symbol": "wrsr.observed.rva_00706c00",
+      "symbol": "wrsr.observed.rva_00706da0",
       "interaction": "around-hook",
       "phase": "runtime",
       "temperature": "HOT"
     },
     {
-      "symbol": "wrsr.observed.rva_00422c30",
+      "symbol": "wrsr.observed.rva_00422bc0",
       "interaction": "post-hook",
       "phase": "runtime",
       "temperature": "WARM"
