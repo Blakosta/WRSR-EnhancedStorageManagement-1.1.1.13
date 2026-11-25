@@ -11,19 +11,19 @@
     "max": 1
   },
   "supportedGameVersions": [
-    "1.1.1.13"
+    "1.2.0.8"
   ],
   "requiredSymbols": [],
   "optionalSymbols": [],
   "hookIntents": [
     {
-      "symbol": "wrsr.observed.rva_00139a70",
+      "symbol": "wrsr.observed.rva_00152520",
       "interaction": "around-hook",
       "phase": "runtime",
       "temperature": "WARM"
     },
     {
-      "symbol": "wrsr.observed.rva_00420290",
+      "symbol": "wrsr.observed.rva_00444210",
       "interaction": "around-hook",
       "phase": "runtime",
       "temperature": "EXTREME"
@@ -35,13 +35,13 @@
       "temperature": "HOT"
     },
     {
-      "symbol": "wrsr.observed.rva_00706da0",
+      "symbol": "wrsr.observed.rva_0073ca40",
       "interaction": "around-hook",
       "phase": "runtime",
       "temperature": "HOT"
     },
     {
-      "symbol": "wrsr.observed.rva_00422bc0",
+      "symbol": "wrsr.observed.rva_00446b40",
       "interaction": "post-hook",
       "phase": "runtime",
       "temperature": "WARM"
