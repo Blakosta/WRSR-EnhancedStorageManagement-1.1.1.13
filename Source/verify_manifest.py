@@ -38,7 +38,7 @@ require(valid_text(manifest.get('description', ''), 2048), 'invalid description'
 require(manifest.get('dll') == 'EnhancedStorageManagement.dll', 'unexpected DLL name')
 require(Path(manifest['dll']).name == manifest['dll'], 'DLL must be a basename')
 require(manifest.get('loaderApi') == {'min': 1, 'max': 1}, 'loader API must be exactly 1')
-require(manifest.get('supportedGameVersions') == ['1.1.1.9'], 'unexpected game-version support')
+require(manifest.get('supportedGameVersions') == ['1.1.1.13'], 'unexpected game-version support')
 
 for field, maximum in [
     ('requiredSymbols', 32), ('optionalSymbols', 32),
