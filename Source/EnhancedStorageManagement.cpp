@@ -792,6 +792,29 @@ static int template_has_recipe_transport(u8* templ, usize beginOffset, usize end
     return 0;
 }
 
+// Placement preview must prove that the prospective storage blueprint contains
+// an exact resource used by the host recipe. A shared transport family alone is
+// not enough: e.g. an OPEN store for chalk must not highlight a liquor factory
+// merely because one of its recipe resources can also use OPEN transport.
+static int template_storage_store_matches_host_recipe(u8* storageStore, u8* hostTempl,
+                                                       AnnexMode mode) {
+    if (!storageStore || !hostTempl || !readable(storageStore, STORE_STRIDE)) return 0;
+    i32 transport = read_i32(storageStore + STORE_TRANSPORT);
+    if (!supported_annex_transport(transport)) return 0;
+    usize beginOffset = mode == ANNEX_INPUT ? TEMPLATE_CONSUME_BEGIN : TEMPLATE_PRODUCE_BEGIN;
+    usize endOffset = mode == ANNEX_INPUT ? TEMPLATE_CONSUME_END : TEMPLATE_PRODUCE_END;
+    u64 begin = 0;
+    usize count = 0;
+    if (!template_resource_vector(hostTempl, beginOffset, endOffset, &begin, &count) || count == 0) return 0;
+    for (usize i = 0; i < count; ++i) {
+        u8* resource = recipe_resource_at(begin, i,
+            mode == ANNEX_INPUT ? RECIPE_INPUT_RATE : RECIPE_OUTPUT_RATE, nullptr);
+        if (!resource || resource_coefficient(resource, transport) <= 0.0f) continue;
+        if (find_resource_record(storageStore, resource)) return 1;
+    }
+    return 0;
+}
+
 
 static int store_matches_recipe(u8* store, u8* templ, usize beginOffset, usize endOffset) {
     if (!store || !templ || !readable(store, STORE_STRIDE)) return 0;
@@ -2118,15 +2141,29 @@ static u8* nearest_attachment_to_preview(void* game, u32 transportMask, u8** out
             u8* templ = building_template(building);
             if (!templ) continue;
             int compatible = 0;
+            u8* storageTempl = current_tool_template(game);
+            u64 storageBegin = 0;
+            usize storageCount = 0;
+            if (!storageTempl || !template_store_vector(storageTempl, &storageBegin, &storageCount)) continue;
             const i32 transports[] = {TRANSPORT_COVERED, TRANSPORT_OPEN, TRANSPORT_AGGREGATE,
                                       TRANSPORT_OIL, TRANSPORT_DRY_BULK, TRANSPORT_COOLER,
                                       TRANSPORT_LIVESTOCK, TRANSPORT_WATER, TRANSPORT_WASTE};
-            for (usize t = 0; t < sizeof(transports)/sizeof(transports[0]); ++t) {
+            for (usize t = 0; t < sizeof(transports)/sizeof(transports[0]) && !compatible; ++t) {
                 i32 transport = transports[t];
                 if ((transportMask & transport_bit(transport)) == 0) continue;
                 u8 hostModes = template_host_mode_mask_for_transport(templ, transport);
-                u8 annexModes = current_tool_lane_mode_mask(game, transport);
-                if (hostModes & annexModes) { compatible = 1; break; }
+                for (usize si = 0; si < storageCount && !compatible; ++si) {
+                    u8* storageStore = (u8*)(storageBegin + si * STORE_STRIDE);
+                    if (read_i32(storageStore + STORE_TRANSPORT) != transport) continue;
+                    float capacity = read_f32(storageStore + STORE_CAPACITY);
+                    if (!finite_reasonable(capacity) || capacity <= 0.000001f) continue;
+                    if ((hostModes & LANE_MASK_INPUT) &&
+                        template_storage_store_matches_host_recipe(storageStore, templ, ANNEX_INPUT))
+                        compatible = 1;
+                    if (!compatible && (hostModes & LANE_MASK_OUTPUT) &&
+                        template_storage_store_matches_host_recipe(storageStore, templ, ANNEX_OUTPUT))
+                        compatible = 1;
+                }
             }
             if (!compatible) continue;
             float sq = 0.0f;
