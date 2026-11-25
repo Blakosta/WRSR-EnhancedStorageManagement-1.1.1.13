@@ -152,7 +152,8 @@ static constexpr usize TEMPLATE_STORES_BEGIN      = 0x778ull;
 static constexpr usize TEMPLATE_STORES_END        = 0x780ull;
 static constexpr usize RECIPE_STRIDE             = 0x10ull;
 static constexpr usize RECIPE_RESOURCE           = 0x00ull;
-static constexpr usize RECIPE_RATE               = 0x08ull;
+static constexpr usize RECIPE_INPUT_RATE         = 0x08ull;
+static constexpr usize RECIPE_OUTPUT_RATE        = 0x0Cull;
 static constexpr i32 BUILDING_TYPE_CARGO_STATION = 0;
 static constexpr i32 BUILDING_TYPE_STORAGE       = 5;
 static constexpr i32 BUILDING_TYPE_FACTORY       = 6;
@@ -580,7 +581,7 @@ static int store_direction_matches(u8* store, AnnexMode mode) {
 static float resource_coefficient(u8* resource, i32 transport);
 static int template_resource_vector(u8* templ, usize beginOffset, usize endOffset,
                                     u64* outBegin, usize* outCount);
-static u8* recipe_resource_at(u64 begin, usize index, float* outRate);
+static u8* recipe_resource_at(u64 begin, usize index, usize rateOffset, float* outRate);
 
 static int building_store_vector(u8* building, u64* outBegin, usize* outCount) {
     if (!building || !outBegin || !outCount ||
@@ -634,7 +635,7 @@ static int template_store_has_recipe_resource(u8* store, u8* templ, AnnexMode mo
     usize rc = 0;
     if (!template_resource_vector(templ, beginOff, endOff, &rb, &rc)) return 0;
     for (usize i = 0; i < rc; ++i) {
-        u8* resource = recipe_resource_at(rb, i, nullptr);
+        u8* resource = recipe_resource_at(rb, i, mode == ANNEX_INPUT ? RECIPE_INPUT_RATE : RECIPE_OUTPUT_RATE, nullptr);
         if (resource && resource_coefficient(resource, transport) > 0.0f) return 1;
     }
     return 0;
@@ -724,13 +725,20 @@ static int template_resource_vector(u8* templ, usize beginOffset, usize endOffse
     return 1;
 }
 
-static u8* recipe_resource_at(u64 begin, usize index, float* outRate) {
+static u8* recipe_resource_at(u64 begin, usize index, usize rateOffset, float* outRate) {
     u8* rec = (u8*)(begin + index * RECIPE_STRIDE);
     if (!readable(rec, RECIPE_STRIDE)) return nullptr;
     u8* resource = (u8*)read_u64(rec + RECIPE_RESOURCE);
-    float rate = read_f32(rec + RECIPE_RATE);
-    if (!resource || !readable(resource, 1) || !finite_reasonable(rate) || rate <= 0.000001f) return nullptr;
-    if (outRate) *outRate = rate;
+    if (!resource || !readable(resource, 1)) return nullptr;
+    // Input and output recipe records store their rate at different offsets.
+    // Most catalog/compatibility paths only need the resource pointer and must
+    // not reject a valid record based on an unrelated +0x08 field.
+    if (outRate) {
+        if (rateOffset > RECIPE_STRIDE - sizeof(float)) return nullptr;
+        float rate = read_f32(rec + rateOffset);
+        if (!finite_reasonable(rate) || rate <= 0.000001f) return nullptr;
+        *outRate = rate;
+    }
     return resource;
 }
 
@@ -771,7 +779,7 @@ static int template_has_recipe_transport(u8* templ, usize beginOffset, usize end
     usize count = 0;
     if (!template_resource_vector(templ, beginOffset, endOffset, &begin, &count)) return 0;
     for (usize i = 0; i < count; ++i) {
-        u8* resource = recipe_resource_at(begin, i, nullptr);
+        u8* resource = recipe_resource_at(begin, i, beginOffset == TEMPLATE_CONSUME_BEGIN ? RECIPE_INPUT_RATE : RECIPE_OUTPUT_RATE, nullptr);
         if (resource && resource_coefficient(resource, transport) > 0.0f) return 1;
     }
     return 0;
@@ -786,7 +794,7 @@ static int store_matches_recipe(u8* store, u8* templ, usize beginOffset, usize e
     usize count = 0;
     if (!template_resource_vector(templ, beginOffset, endOffset, &begin, &count)) return 0;
     for (usize i = 0; i < count; ++i) {
-        u8* resource = recipe_resource_at(begin, i, nullptr);
+        u8* resource = recipe_resource_at(begin, i, beginOffset == TEMPLATE_CONSUME_BEGIN ? RECIPE_INPUT_RATE : RECIPE_OUTPUT_RATE, nullptr);
         // Recipe compatibility is a template property. Do not require the live
         // resource-record vector to have materialised yet: empty water/fuel and
         // several specialised buffers are valid before their first delivery.
@@ -1002,7 +1010,7 @@ static int ensure_type_catalog(void* game) {
         if (!template_resource_vector(templ, TEMPLATE_PRODUCE_BEGIN, TEMPLATE_PRODUCE_END,
                                       &produced, &producedCount)) continue;
         for (usize r = 0; r < producedCount; ++r) {
-            u8* resource = recipe_resource_at(produced, r, nullptr);
+            u8* resource = recipe_resource_at(produced, r, RECIPE_OUTPUT_RATE, nullptr);
             if (!resource) continue;
             i32 transport = resource_supported_transport(
                 resource, transport_bit(TRANSPORT_AGGREGATE) | transport_bit(TRANSPORT_OIL));
@@ -1046,7 +1054,7 @@ static int template_recipe_contains_resource(u8* templ, AnnexMode mode, u8* reso
     usize count = 0;
     if (!template_resource_vector(templ, beginOffset, endOffset, &begin, &count)) return 0;
     for (usize i = 0; i < count; ++i) {
-        if (recipe_resource_at(begin, i, nullptr) == resource) return 1;
+        if (recipe_resource_at(begin, i, beginOffset == TEMPLATE_CONSUME_BEGIN ? RECIPE_INPUT_RATE : RECIPE_OUTPUT_RATE, nullptr) == resource) return 1;
     }
     return 0;
 }
@@ -3425,7 +3433,7 @@ static void add_live_mine_recipe_lanes(u8* building, u8* templ, u32* laneCount) 
     if (!template_resource_vector(templ, TEMPLATE_PRODUCE_BEGIN, TEMPLATE_PRODUCE_END, &pb, &pc)) return;
     u32 minedMask = 0;
     for (usize r = 0; r < pc; ++r) {
-        u8* resource = recipe_resource_at(pb, r, nullptr);
+        u8* resource = recipe_resource_at(pb, r, RECIPE_OUTPUT_RATE, nullptr);
         if (!resource) continue;
         i32 t = resource_supported_transport(resource, transport_bit(TRANSPORT_AGGREGATE) | transport_bit(TRANSPORT_OIL));
         if (!supported_mine_transport(t)) continue;
