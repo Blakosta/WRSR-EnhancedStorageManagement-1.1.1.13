@@ -4577,20 +4577,27 @@ static int append_temporary_connection_result(i64 game, u8* target) {
                   GAME_TEMP_CONNECTIONS_CAP - GAME_TEMP_CONNECTIONS_BEGIN + sizeof(u64))) return 0;
     u64 begin = read_u64(base + GAME_TEMP_CONNECTIONS_BEGIN);
     u64 end = read_u64(base + GAME_TEMP_CONNECTIONS_END);
-    if (end < begin || ((end - begin) & 7ull) != 0 ||
+    u64 cap = read_u64(base + GAME_TEMP_CONNECTIONS_CAP);
+    if ((!begin && (end || cap)) || end < begin || cap < end ||
+        ((end - begin) & 7ull) != 0 || ((cap - begin) & 7ull) != 0 ||
         (end - begin) / 8ull > 1024ull) return 0;
     if (begin && end > begin && !readable((const void*)begin, (usize)(end - begin))) return 0;
     for (u64 at = begin; at < end; at += 8) {
         if (read_u64((const u8*)at) == (u64)target) return 1;
     }
+
+    // Use WRSR's own std::vector<u64>::push_back entry. It grows the vector
+    // through the native allocator when needed and updates begin/end/capacity.
     const u64 value = (u64)target;
     g_vectorPushBackU64((i64*)(base + GAME_TEMP_CONNECTIONS_BEGIN), &value);
+
     begin = read_u64(base + GAME_TEMP_CONNECTIONS_BEGIN);
     end = read_u64(base + GAME_TEMP_CONNECTIONS_END);
-    if (end < begin || ((end - begin) & 7ull) != 0 ||
-        (end - begin) / 8ull > 1024ull || end < begin + 8 ||
-        !readable((const void*)(end - 8), sizeof(u64))) return 0;
-    return read_u64((const u8*)(end - 8)) == value;
+    cap = read_u64(base + GAME_TEMP_CONNECTIONS_CAP);
+    if (!begin || end < begin || cap < end || ((end - begin) & 7ull) != 0 ||
+        ((cap - begin) & 7ull) != 0 || (end - begin) / 8ull > 1024ull ||
+        end - begin < sizeof(u64) || !readable((const void*)(end - sizeof(u64)), sizeof(u64))) return 0;
+    return read_u64((const u8*)(end - sizeof(u64))) == value;
 }
 
 // Native FUN_1407CDC40 invokes FUN_140422C30 with exactly (-1, mode=2, flag=0)
