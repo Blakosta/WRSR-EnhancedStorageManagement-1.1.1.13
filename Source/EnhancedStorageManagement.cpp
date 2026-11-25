@@ -4571,7 +4571,7 @@ static int append_temporary_connection_result(i64 game, u8* target) {
     if (!game || !target || !g_vectorPushBackU64 || !completed_building(target)) return 0;
     u8* base = (u8*)game;
     if (!readable(base + GAME_TEMP_CONNECTIONS_BEGIN,
-                  GAME_TEMP_CONNECTIONS_CAP - GAME_TEMP_CONNECTIONS_BEGIN + sizeof(u64) * 3)) return 0;
+                  GAME_TEMP_CONNECTIONS_CAP - GAME_TEMP_CONNECTIONS_BEGIN + sizeof(u64))) return 0;
     u64 begin = read_u64(base + GAME_TEMP_CONNECTIONS_BEGIN);
     u64 end = read_u64(base + GAME_TEMP_CONNECTIONS_END);
     if (end < begin || ((end - begin) & 7ull) != 0 ||
