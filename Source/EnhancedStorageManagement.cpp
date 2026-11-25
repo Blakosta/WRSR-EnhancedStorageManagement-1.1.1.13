@@ -133,10 +133,10 @@ static constexpr usize TOOL_TEMPLATE          = 0x48ull;
 // simulation dispatcher confirms the authoritative building class at +0x360:
 // 5=$TYPE_STORAGE, 6=$TYPE_FACTORY, 7=$TYPE_MINE_*.  Do NOT use the
 // building-editor type-table/index at +0x5E0/+0x610 for loaded native
-// definitions. FUN_140176ff0 reads the live recipe vectors directly from the
-// template: +0x688/+0x690 consumption and +0x6B8/+0x6C0 production.  Each
-// recipe record is 0x10 bytes and begins with the already-resolved resource
-// pointer; the float at +0x08 is the recipe rate.  Storage compatibility is
+// definitions. FUN_140177010 reads the live recipe vectors directly from the
+// template: +0x688/+0x690 consumption and +0x6B8/+0x6C0 production. Each
+// record is 0x10 bytes and begins with the resolved resource pointer; input
+// rate is at +0x08, output rate at +0x0C. Storage compatibility is
 // deliberately NOT read from a template-side descriptor table: live building
 // instances expose the authoritative 0xE0 storage descriptors at +0x970.
 static constexpr usize TEMPLATE_RUNTIME_TYPE     = 0x360ull;
