@@ -129,9 +129,6 @@ static constexpr usize GAME_TEMP_CONNECTIONS_END   = 0x14530ull;
 static constexpr usize GAME_TEMP_CONNECTIONS_CAP   = 0x14538ull;
 static constexpr usize BUILDING_TEMPLATE     = 0x318ull;
 // Position fields remain inherited from upstream and are not yet independently mapped.
-static constexpr usize BUILDING_POSITION_X   = 0x3A0ull;
-static constexpr usize BUILDING_POSITION_Y   = 0x3A4ull;
-static constexpr usize BUILDING_POSITION_Z   = 0x3A8ull;
 static constexpr usize BUILDING_COMPLETION   = 0x604ull;
 // 1.2.0.8 simulation dispatch reads building+0x5F4 as its C3D instance ID.
 static constexpr usize BUILDING_INSTANCE_ID  = 0x5F4ull;
@@ -1229,20 +1226,15 @@ static int valid_capacity_store(u8* store, i32 expectedTransport, float* outCapa
     return 1;
 }
 
+static int building_center(u8* building, C3DVector3* out);
+ 
 static int position_distance_sq(u8* a, u8* b, float* outSq) {
     if (!a || !b || !outSq) return 0;
-    if (!readable(a + BUILDING_POSITION_X, 12) || !readable(b + BUILDING_POSITION_X, 12)) return 0;
-    float ax = read_f32(a + BUILDING_POSITION_X);
-    float ay = read_f32(a + BUILDING_POSITION_Y);
-    float az = read_f32(a + BUILDING_POSITION_Z);
-    float bx = read_f32(b + BUILDING_POSITION_X);
-    float by = read_f32(b + BUILDING_POSITION_Y);
-    float bz = read_f32(b + BUILDING_POSITION_Z);
-    if (!finite_reasonable(ax) || !finite_reasonable(ay) || !finite_reasonable(az) ||
-        !finite_reasonable(bx) || !finite_reasonable(by) || !finite_reasonable(bz)) return 0;
-    if (abs_f(ay - by) > g_verticalLimit) return 0;
-    float dx = ax - bx;
-    float dz = az - bz;
+    C3DVector3 pa{}, pb{};
+    if (!building_center(a, &pa) || !building_center(b, &pb)) return 0;
+    if (abs_f(pa.y - pb.y) > g_verticalLimit) return 0;
+    float dx = pa.x - pb.x;
+    float dz = pa.z - pb.z;
     float sq = dx * dx + dz * dz;
     if (!finite_reasonable(sq) || sq < 0.0f) return 0;
     *outSq = sq;
@@ -1252,18 +1244,15 @@ static int position_distance_sq(u8* a, u8* b, float* outSq) {
 static int cursor_distance_sq(void* game, u8* building, float* outSq) {
     if (!game || !building || !outSq) return 0;
     u8* world = (u8*)game;
-    if (!readable(world + GAME_CURSOR_X, 12) || !readable(building + BUILDING_POSITION_X, 12)) return 0;
+    C3DVector3 buildingPos{};
+    if (!readable(world + GAME_CURSOR_X, 12) || !building_center(building, &buildingPos)) return 0;
     float cx = read_f32(world + GAME_CURSOR_X);
     float cy = read_f32(world + GAME_CURSOR_Y);
     float cz = read_f32(world + GAME_CURSOR_Z);
-    float bx = read_f32(building + BUILDING_POSITION_X);
-    float by = read_f32(building + BUILDING_POSITION_Y);
-    float bz = read_f32(building + BUILDING_POSITION_Z);
-    if (!finite_reasonable(cx) || !finite_reasonable(cy) || !finite_reasonable(cz) ||
-        !finite_reasonable(bx) || !finite_reasonable(by) || !finite_reasonable(bz)) return 0;
-    if (abs_f(cy - by) > g_verticalLimit) return 0;
-    float dx = cx - bx;
-    float dz = cz - bz;
+    if (!finite_reasonable(cx) || !finite_reasonable(cy) || !finite_reasonable(cz)) return 0;
+    if (abs_f(cy - buildingPos.y) > g_verticalLimit) return 0;
+    float dx = cx - buildingPos.x;
+    float dz = cz - buildingPos.z;
     float sq = dx * dx + dz * dz;
     if (!finite_reasonable(sq) || sq < 0.0f) return 0;
     *outSq = sq;
@@ -1509,7 +1498,7 @@ static void* c3d_building_manager(void* game) {
 }
 
 static u8* c3d_type_for_template(void* game, u8* templ) {
-    if (!game || !templ || !readable(templ + TEMPLATE_COLLISION_TYPE, sizeof(i32))) return nullptr;
+    if (!templ || !readable(templ + TEMPLATE_COLLISION_TYPE, sizeof(i32))) return nullptr;
     i32 typeIndex = read_i32(templ + TEMPLATE_COLLISION_TYPE);
     if (typeIndex < 0) return nullptr;
     u8* manager = (u8*)c3d_building_manager(game);
@@ -1648,10 +1637,24 @@ static int point_hits_building(void* game, u8* target, const C3DVector3* point, 
 }
 
 static int building_center(u8* building, C3DVector3* out) {
-    if (!building || !out || !readable(building + BUILDING_POSITION_X, 12)) return 0;
-    out->x = read_f32(building + BUILDING_POSITION_X);
-    out->y = read_f32(building + BUILDING_POSITION_Y);
-    out->z = read_f32(building + BUILDING_POSITION_Z);
+    if (!building || !out || !readable(building + BUILDING_INSTANCE_ID, sizeof(i32))) return 0;
+    u8* templ = building_template(building);
+    u8* type = templ ? c3d_type_for_template(nullptr, templ) : nullptr;
+    if (!type || !readable(type + C3D_TYPE_INSTANCES_END, sizeof(u64))) return 0;
+
+    i32 instanceId = read_i32(building + BUILDING_INSTANCE_ID);
+    if (instanceId < 0) return 0;
+    u64 begin = read_u64(type + C3D_TYPE_INSTANCES_BEGIN);
+    u64 end = read_u64(type + C3D_TYPE_INSTANCES_END);
+    usize count = 0;
+    if (!valid_vector(begin, end, C3D_INSTANCE_STRIDE, 100000, &count) ||
+        (usize)instanceId >= count) return 0;
+
+    u8* instance = (u8*)(begin + (usize)instanceId * C3D_INSTANCE_STRIDE);
+    if (!readable(instance + C3D_INSTANCE_POS_Z, sizeof(float))) return 0;
+    out->x = read_f32(instance + C3D_INSTANCE_POS_X);
+    out->y = read_f32(instance + C3D_INSTANCE_POS_Y);
+    out->z = read_f32(instance + C3D_INSTANCE_POS_Z);
     return finite_reasonable(out->x) && finite_reasonable(out->y) && finite_reasonable(out->z);
 }
 
