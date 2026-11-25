@@ -1650,7 +1650,7 @@ static int building_center(u8* building, C3DVector3* out) {
         (usize)instanceId >= count) return 0;
 
     u8* instance = (u8*)(begin + (usize)instanceId * C3D_INSTANCE_STRIDE);
-    if (!readable(instance + C3D_INSTANCE_POS_Z, sizeof(float))) return 0;
+    if (!readable(instance + C3D_INSTANCE_POS_X, sizeof(float) * 3)) return 0;
     out->x = read_f32(instance + C3D_INSTANCE_POS_X);
     out->y = read_f32(instance + C3D_INSTANCE_POS_Y);
     out->z = read_f32(instance + C3D_INSTANCE_POS_Z);
