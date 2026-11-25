@@ -82,7 +82,7 @@ The previous blocker at the old RVA `0x706C00` is now resolved for static mappin
 - The caller's argument arrangement matches the upstream `GenericStorageUiFn` ABI: four register arguments followed by twelve stack arguments, including pointer/float/integer/byte positions in the expected order. This is much stronger evidence than a matching prologue alone and distinguishes it from the rejected `0x705380` function, whose caller consumes a float return value.
 - The source constant `RVA_GENERIC_STORAGE_UI` has therefore been changed to `0x00706DA0`; the existing runtime prologue check remains enabled.
 
-This is a semantically supported static mapping, but it still requires a fresh CI build and in-game validation. Other object layouts and the aggregate-refresh/building-highlight helpers remain unresolved.
+This is a semantically supported static mapping, but it still requires a fresh CI build and in-game validation. Other object layouts and the aggregate-refresh helper remain unresolved; the native building-highlight mapping is documented in the later section below.
 
 ## Rebuild after UI-hook mapping
 
