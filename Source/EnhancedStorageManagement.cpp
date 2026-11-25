@@ -1747,9 +1747,8 @@ static int load_local_box_from_mesh(u8* mesh, int flipZ, LocalBox2D* out) {
 }
 
 // Resolve the exact prospective native storage footprint used by WRSR's C3D
-// cursor-building path.  EditorSetCursorUpdateCopy and Collision2DBBox in
-// The supplied C3DDLL64 1.2.0.8 Collision2DBBox uses this TYPE geometry
-// and rotation-step matrices.
+// cursor-building path. The supplied C3DDLL64 1.2.0.8 Collision2DBBox uses
+// this TYPE geometry and the mapped rotation-step matrices.
 static int current_tool_preview_footprint(void* game, PreviewFootprint* out) {
     if (!game || !out || !g_getRotationStep || !g_vec3TransformCoord) return 0;
     u8* templ = current_tool_template(game);
