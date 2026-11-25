@@ -48,7 +48,7 @@ The generic storage UI blocker was subsequently resolved by the ABI-based mappin
 
 ## Important remaining work
 
-Updating function RVAs is only part of the port. Several important 1.1.1.13 layouts are now independently corroborated: the global root slot and C3D manager field, building-list/template/completion fields, live building storage vector and descriptor stride, template storage-blueprint vector, storage transport/role/capacity/block flags, and C3D type/instance/mesh geometry fields. Remaining offsets still requiring field-level checks include recipe vectors, storage allocation vectors and resource coefficients, building position/instance identity fields, and any other inherited offsets used by active code.
+Updating function RVAs is only part of the port. Several important 1.1.1.13 layouts are now independently corroborated: the global root slot and C3D manager field, building-list/template/completion fields, live building storage vector and descriptor stride, template storage-blueprint vector, storage transport/role/capacity/block flags, and C3D type/instance/mesh geometry fields. Remaining offsets still requiring field-level checks include storage allocation vectors and resource coefficients, building position fields, and any other inherited offsets used by active code. The building instance ID at `+0x5F4` and template collision type at `+0x410` are now verified.
 
 No claim of full compatibility or in-game stability is made at this stage. The mod must not be released until all hooks and layouts are verified, the DLL builds, and the game is tested.
 
