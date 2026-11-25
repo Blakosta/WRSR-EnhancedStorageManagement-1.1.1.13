@@ -201,3 +201,9 @@ The 1.1.1.13 resource-transfer path at RVA `0x4243C0` directly reads the allocat
 The same routine reads the resource coefficient using `resource + 0xCC + transport * 0x20` (instructions around `0x424C7C` and `0x424CFD`) and multiplies it by the store capacity at descriptor `+0x8C`. This independently confirms `RESOURCE_COEFF_BASE = 0xCC`, `RESOURCE_COEFF_STRIDE = 0x20`, `STORE_CAPACITY = 0x8C`, and the transport field at `+0x90`.
 
 The allocation vector's end pointer at descriptor `+0x20` is still not independently identified in this specific routine; its source constant remains an inherited value pending a direct reference check.
+
+## C3D connection-node metadata: prior mapping rejected
+
+A prior source comment attributed the node-vector layout and connection-kind values to C3DDLL64 RVA `0xBFF40`. Rechecking the supplied 1.1.1.13 DLL with disassembly shows that this address is **inside** `SpawnParticlesDistance` (runtime-function entry RVA `0xBFE20`), not an entry for a C3D building-type export. The claimed evidence for TYPE+0/+8, NODE+0xE0, metadata+0x20, and the numeric connection-kind mapping is therefore invalid and must not be used.
+
+The adaptation now fails closed for this optional classification path: `c3d_connection_kind_flags` returns no inferred flags and does not dereference the unverified node pointers. Cargo transport classification continues to prefer the verified template storage-blueprint descriptors and observed live descriptors. If neither identifies a specialised cargo station, the existing conservative provisional cargo mask is used; direction falls back to the resource-selection ambiguity rules. This may reduce preview specificity for specialised loaders/unloaders, but avoids treating unrelated object fields as pointers. A correct node-layout map remains outstanding.
