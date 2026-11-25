@@ -196,9 +196,8 @@ static constexpr usize C3D_TYPE_INSTANCES_BEGIN = 0x2C0ull;
 static constexpr usize C3D_TYPE_INSTANCES_END   = 0x2C8ull;
 static constexpr usize C3D_TYPE_NODES_BEGIN      = 0x00ull;
 static constexpr usize C3D_TYPE_NODES_END        = 0x08ull;
-// FUN_1400BFF40 exports a C3D building type by iterating its node-pointer
-// vector at +0/+8. Each node points at connection metadata via +0xE0;
-// metadata+0x20 is the native connection-kind code.
+// C3D building types expose a node-pointer vector at +0/+8. Each node points
+// at connection metadata via +0xE0; metadata+0x20 is the native connection-kind code.
 static constexpr usize C3D_NODE_CONNECTION_META  = 0xE0ull;
 static constexpr usize C3D_CONNECTION_KIND       = 0x20ull;
 static constexpr usize C3D_INSTANCE_STRIDE      = 0x118ull;
@@ -4867,7 +4866,7 @@ extern "C" __declspec(dllexport) int TsmPluginInit(const void* hostPtr, TsmPlugi
 
     g_host = host;
     g_exeBase = host->exeBase;
-    // The old aggregate-storage refresh RVA is still unverified on 1.1.1.13.
+    // Aggregate-storage refresh has not been mapped for 1.2.0.8.
     // Native building-highlight is not yet mapped for 1.2.0.8. Keep that
     // optional integration disabled fail-closed; the vector push-back helper is verified.
     g_aggregateStorageTouch = nullptr;
