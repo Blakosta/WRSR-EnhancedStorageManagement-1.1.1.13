@@ -194,10 +194,6 @@ static constexpr usize C3D_TYPE_INSTANCES_END   = 0x2C8ull;
 // FUN_1400BFF40 exports a C3D building type by iterating its node-pointer
 // vector at +0/+8. Each node points at connection metadata via +0xE0;
 // metadata+0x20 is the native connection-kind code.
-static constexpr usize C3D_TYPE_NODES_BEGIN      = 0x00ull;
-static constexpr usize C3D_TYPE_NODES_END        = 0x08ull;
-static constexpr usize C3D_NODE_CONNECTION_META  = 0xE0ull;
-static constexpr usize C3D_CONNECTION_KIND       = 0x20ull;
 static constexpr usize C3D_INSTANCE_STRIDE      = 0x118ull;
 static constexpr usize C3D_INSTANCE_POS_X       = 0x10ull;
 static constexpr usize C3D_INSTANCE_POS_Y       = 0x14ull;
@@ -1445,37 +1441,14 @@ static void* c3d_building_manager(void* game) {
     return manager && readable(manager, 1) ? manager : nullptr;
 }
 
-static u8* c3d_type_for_template(void* game, u8* templ) {
-    if (!game || !templ || !readable(templ + TEMPLATE_COLLISION_TYPE, sizeof(i32))) return nullptr;
-    i32 typeIndex = read_i32(templ + TEMPLATE_COLLISION_TYPE);
-    if (typeIndex < 0) return nullptr;
-    u8* manager = (u8*)c3d_building_manager(game);
-    if (!manager || !readable(manager + C3D_TYPES_END, sizeof(u64))) return nullptr;
-    u64 begin = read_u64(manager + C3D_TYPES_BEGIN);
-    u64 end = read_u64(manager + C3D_TYPES_END);
-    usize count = 0;
-    if (!valid_vector(begin, end, C3D_TYPE_STRIDE, 4096, &count) || (usize)typeIndex >= count) return nullptr;
-    u8* type = (u8*)(begin + (usize)typeIndex * C3D_TYPE_STRIDE);
-    return readable(type, C3D_TYPE_NODES_END + sizeof(u64)) ? type : nullptr;
-}
-
-static u32 c3d_connection_kind_flags(void* game, u8* templ) {
-    u8* type = c3d_type_for_template(game, templ);
-    if (!type) return 0;
-    u64 begin = read_u64(type + C3D_TYPE_NODES_BEGIN);
-    u64 end = read_u64(type + C3D_TYPE_NODES_END);
-    usize count = 0;
-    if (!valid_vector(begin, end, sizeof(u64), 1024, &count)) return 0;
-    u32 flags = 0;
-    for (usize i = 0; i < count; ++i) {
-        u8* node = (u8*)read_u64((u8*)begin + i * sizeof(u64));
-        if (!node || !readable(node + C3D_NODE_CONNECTION_META, sizeof(u64))) continue;
-        u8* meta = (u8*)read_u64(node + C3D_NODE_CONNECTION_META);
-        if (!meta || !readable(meta + C3D_CONNECTION_KIND, sizeof(i32))) continue;
-        i32 kind = read_i32(meta + C3D_CONNECTION_KIND);
-        if (kind >= 0 && kind < 32) flags |= (1u << (u32)kind);
-    }
-    return flags;
+// The old node-vector interpretation was attributed to RVA 0xBFF40 in
+// C3DDLL64.dll. On the supplied 1.1.1.13 DLL that RVA is inside
+// SpawnParticlesDistance (entry RVA 0xBFE20), not a node-export routine.
+// Until the actual node/connection layout is mapped, do not dereference
+// TYPE+0/+8 or NODE+0xE0. Blueprint and observed live storage descriptors
+// remain the supported sources of transport classification.
+static u32 c3d_connection_kind_flags(void*, u8*) {
+    return 0;
 }
 
 static u32 cargo_template_transport_mask(void* game, u8* templ) {
@@ -1490,10 +1463,6 @@ static u32 cargo_template_transport_mask(void* game, u8* templ) {
 
     u32 flags = c3d_connection_kind_flags(game, templ);
     u32 mask = 0;
-    // FUN_1400BFF40 connection-kind mapping: 3/4 conveyor, 5/6 pipe,
-    // 0x13/0x14 bulk, 0x19/0x1A water pipe. These let placement preview
-    // recognise road/rail/cableway specialised loaders before one has ever
-    // been placed in the save.
     if (flags & ((1u << 3) | (1u << 4))) mask |= transport_bit(TRANSPORT_AGGREGATE);
     if (flags & ((1u << 5) | (1u << 6))) mask |= transport_bit(TRANSPORT_OIL);
     if (flags & ((1u << 0x13) | (1u << 0x14))) mask |= transport_bit(TRANSPORT_DRY_BULK);
@@ -1529,8 +1498,8 @@ static u8 cargo_template_mode_mask(void* game, u8* templ, i32 transport) {
         if (flags & (1u << 0x19)) modes |= LANE_MASK_OUTPUT;
         if (flags & (1u << 0x1A)) modes |= LANE_MASK_INPUT;
     }
-    // Fail safe for modded cargo stations whose C3D metadata cannot be read:
-    // keep them eligible but force normal resource-selection ambiguity rules.
+    // Until C3D connection-node metadata is independently mapped, retain
+    // eligibility but use resource-selection ambiguity rules for direction.
     return modes ? modes : LANE_MASK_BOTH;
 }
 
