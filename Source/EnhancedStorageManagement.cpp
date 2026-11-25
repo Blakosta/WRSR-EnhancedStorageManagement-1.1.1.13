@@ -414,10 +414,7 @@ static ConstructionToolFrameFn g_originalConstructionFrame = nullptr;
 static GenericStorageUiFn g_originalGenericStorageUi = nullptr;
 static FactoryConnectionQueryFn g_originalFactoryConnectionQuery = nullptr;
 static ResourceTransferFn g_originalResourceTransfer = nullptr;
-static VectorPushBackU64Fn u8* vectorPushBackEntry = g_exeBase + RVA_VECTOR_PUSH_BACK_U64;
-    g_vectorPushBackU64 = readable(vectorPushBackEntry, sizeof(VECTOR_PUSH_BACK_U64_EXPECTED)) &&
-        bytes_equal(vectorPushBackEntry, VECTOR_PUSH_BACK_U64_EXPECTED, sizeof(VECTOR_PUSH_BACK_U64_EXPECTED))
-        ? (VectorPushBackU64Fn)vectorPushBackEntry : nullptr;
+static VectorPushBackU64Fn g_vectorPushBackU64 = nullptr;
 static AggregateStorageTouchFn g_aggregateStorageTouch = nullptr;
 static BuildingHighlightFn g_buildingHighlight = nullptr;
 static Collision2DBBoxFn g_collision2DBBox = nullptr;
@@ -4869,14 +4866,17 @@ extern "C" __declspec(dllexport) int TsmPluginInit(const void* hostPtr, TsmPlugi
     g_buildingHighlight = highlightEntry && readable(highlightEntry, sizeof(BUILDING_HIGHLIGHT_EXPECTED)) &&
         bytes_equal(highlightEntry, BUILDING_HIGHLIGHT_EXPECTED, sizeof(BUILDING_HIGHLIGHT_EXPECTED))
         ? (BuildingHighlightFn)highlightEntry : nullptr;
-    g_vectorGrowU64 = RVA_VECTOR_PUSH_BACK_U64 ? (VectorPushBackU64Fn)(g_exeBase + RVA_VECTOR_GROW_U64) : nullptr;
+    u8* vectorPushBackEntry = g_exeBase + RVA_VECTOR_PUSH_BACK_U64;
+    g_vectorPushBackU64 = readable(vectorPushBackEntry, sizeof(VECTOR_PUSH_BACK_U64_EXPECTED)) &&
+        bytes_equal(vectorPushBackEntry, VECTOR_PUSH_BACK_U64_EXPECTED, sizeof(VECTOR_PUSH_BACK_U64_EXPECTED))
+        ? (VectorPushBackU64Fn)vectorPushBackEntry : nullptr;
     g_collision2DBBox = host->engineModule ? (Collision2DBBoxFn)((u8*)host->engineModule + RVA_C3D_COLLISION_2D_BBOX) : nullptr;
     g_getRotationStep = host->engineModule ? (GetRotationStepFn)((u8*)host->engineModule + RVA_C3D_GET_ROTATION_STEP) : nullptr;
     g_vec3TransformCoord = host->engineModule ? (Vec3TransformCoordFn)((u8*)host->engineModule + RVA_C3D_VEC3_TRANSFORM_COORD) : nullptr;
 
     if (!readable((void*)g_aggregateStorageTouch, 1)) g_aggregateStorageTouch = nullptr;
     if (!readable((void*)g_buildingHighlight, 1)) g_buildingHighlight = nullptr;
-    if (!readable((void*)g_vectorGrowU64, 1)) g_vectorGrowU64 = nullptr;
+    if (!readable((void*)g_vectorPushBackU64, 1)) g_vectorPushBackU64 = nullptr;
     if (!readable((void*)g_collision2DBBox, 1)) g_collision2DBBox = nullptr;
     if (!readable((void*)g_getRotationStep, 1)) g_getRotationStep = nullptr;
     if (!readable((void*)g_vec3TransformCoord, 1)) g_vec3TransformCoord = nullptr;
@@ -4900,7 +4900,7 @@ extern "C" __declspec(dllexport) int TsmPluginInit(const void* hostPtr, TsmPlugi
     if (g_showPlacementOverlay && !g_buildingHighlight) {
         host->log("[EnhancedStorageManagement] native building-highlight entry unavailable or signature mismatch; placement feedback disabled while storage mechanics remain active");
     }
-    if (!g_vectorGrowU64) {
+    if (!g_vectorPushBackU64) {
         host->log("[EnhancedStorageManagement] native temporary-vector grow helper unavailable; freight station connection-warning UI bridge will remain disabled fail-closed");
     }
     return 0;
@@ -4994,7 +4994,7 @@ extern "C" __declspec(dllexport) int TsmPluginStart(void) {
 
     // Extend only WRSR's temporary connection query; persistent factory-connection
     // topology and save data remain untouched.
-    if (g_vectorGrowU64) {
+    if (g_vectorPushBackU64) {
         u8* connectionTarget = g_exeBase + RVA_FACTORY_CONNECTION_QUERY;
         u8 connectionBridge[ABSOLUTE_ENTRY_BRIDGE_SPAN] = {};
         usize connectionSpan = 0;
