@@ -181,3 +181,9 @@ The building simulation/production routine at RVA `0x177010` directly verifies t
 - Output/production vector begin/end are template `+0x6B8/+0x6C0`. It also divides by `0x10`, indexes at stride `0x10`, reads the resource pointer at `+0x00`, but reads the rate at record `+0x0C`.
 
 This confirms both vector offsets and `RECIPE_STRIDE = 0x10`, while revealing that the input and output rate fields are not interchangeable. The source now defines `RECIPE_INPUT_RATE = 0x08` and `RECIPE_OUTPUT_RATE = 0x0C`. Its resource-discovery paths do not request rates, so they now validate the resource pointer without accidentally treating the other record field as a rate.
+
+## Resource-transfer path corroboration
+
+The resource-transfer function at RVA `0x420290` calls the building-storage processing routine at `0x4243C0`. That routine independently walks live building stores using `+0x970/+0x978` and stride `0xE0`, reads each store's transport at `+0x90`, and walks the store's resource records through descriptor `+0x00/+0x08` with `0x10`-byte entries. It also checks the template's input and output recipe vectors at `+0x688/+0x690` and `+0x6B8/+0x6C0`, dividing both byte lengths by `0x10` and comparing each record's resource pointer.
+
+This provides a second independent caller path for the live storage vector, descriptor transport, record vector, and both recipe-vector layouts. It does not yet establish the allocation vector at descriptor `+0x18/+0x20`, its element fields, or the resource transport coefficient table.
