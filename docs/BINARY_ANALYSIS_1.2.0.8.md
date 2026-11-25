@@ -45,15 +45,18 @@ These are exported function entries, not guesses based on nearby code. The forme
 
 ## Intentionally disabled pending mapping
 
-- Native building-highlight function and its colour-selector semantics. The old highlight RVA/signature does not match the new executable; source constant is set to zero, so the placement overlay fails closed.
-- Native vector-growth helper. The old `0xB1700` address is inside an unrelated function in 1.2.0.8. Source constant is set to zero, so the optional freight connection-warning UI bridge remains disabled rather than calling an unverified function.
+- Native building-highlight function and its colour-selector semantics. The new game stores a 3-float cursor orientation vector starting at `+0xF9C`; the yaw component has not yet been identified. The old highlight RVA/signature does not match the new executable; source constant is set to zero, so the placement overlay fails closed.
+- Native vector growth helper at the old `0xB1700` address is invalid in 1.2.0.8. Instead, the port now uses the verified native 8-byte `std::vector::push_back` entry at `0x54960` (14-byte signature checked at runtime). It appends a pointer value and invokes the native growth routine when capacity is exhausted. The helper is widely called by the executable, including from the mapped building dispatcher.
 - Aggregate-storage visual refresh remains disabled, as it was not mapped.
 
 ## Remaining field-level work
 
-- Current construction-tool pointer, tool catalog, cursor position and cursor rotation offsets.
+- Cursor rotation component/yaw axis and the current-tool object's template member.
 - Allocation-vector begin/end and allocation record fields; resource coefficient table layout.
 - Exact resource-transfer downstream routine and any changed internal storage offsets not covered above.
+- Building world-position fields. The old `+0x3A0/+0x3A4/+0x3A8` values remain unverified for 1.2.0.8 and must not be treated as confirmed.
+- Runtime type field at template `+0x368` is read by the dispatcher; the complete 1.2.0.8 mapping of storage/factory/mine enum values still needs confirmation.
+- C3D template type index is read at template `+0x418`; the former `+0x410` value is stale.
 - Native building-highlight entry, caller ABI, and the native selector value for green.
 - Native vector-growth helper and the second temporary connection vector's role.
 - Any remaining object fields used by the port that are still inherited from 1.1.1.13.
