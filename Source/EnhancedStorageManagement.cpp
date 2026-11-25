@@ -77,6 +77,7 @@ static constexpr usize RVA_GENERIC_STORAGE_UI           = 0x00706DA0ull;
 static constexpr usize RVA_FACTORY_CONNECTION_QUERY     = 0x00422BC0ull;
 static constexpr usize RVA_RESOURCE_TRANSFER              = 0x00420290ull;
 static constexpr usize RVA_VECTOR_GROW_U64              = 0x000B1700ull;
+static constexpr usize RVA_BUILDING_HIGHLIGHT              = 0x0040BCA0ull;
 static constexpr usize RVA_GAME_ROOT_SLOT               = 0x009941F0ull;
 static constexpr usize RVA_C3D_COLLISION_2D_BBOX        = 0x0003E350ull;
 static constexpr usize RVA_C3D_GET_ROTATION_STEP        = 0x0003A050ull;
@@ -101,6 +102,9 @@ static const u8 FACTORY_QUERY_EXPECTED[FACTORY_QUERY_HOOK_SPAN] = {
 };
 static const u8 RESOURCE_TRANSFER_EXPECTED[RESOURCE_TRANSFER_HOOK_SPAN] = {
     0x40,0x53,0x57,0x41,0x54,0x48,0x81,0xEC,0x80,0x00,0x00,0x00,0x41,0x83,0x79,0x44,0xFF
+};
+static const u8 BUILDING_HIGHLIGHT_EXPECTED[] = {
+    0x40,0x55,0x53,0x56,0x57,0x48,0x8D,0xAC,0x24,0xF8,0xE5,0xFF,0xFF,0xB8,0x08,0x1B,0x00,0x00
 };
 
 // Layout values originated in upstream 1.1.1.9; verified 1.1.1.13 fields are documented in docs/BINARY_ANALYSIS_1.1.1.13.md.
@@ -300,10 +304,11 @@ using VectorGrowU64Fn = void (__fastcall*)(i64* vectorBeginField, u64 extraEleme
 using ResourceTransferFn = u64 (__fastcall*)(i64 game, u64 building, int transferMode, i64 resource,
                                              float amount, float* residual, float param7,
                                              char exactBuilding, i64 param9);
-// FUN_14040BD60 has a decompiler-visible float in XMM3 and a hidden R9D colour selector.
-// A vararg call is intentional on Windows x64: the first floating vararg is mirrored to
-// XMM3 and R9, so 0.0 yields both frameInterpolation=0 and colour selector 0 (green).
-using BuildingHighlightVarargFn = void (__cdecl*)(u64 game, i64 building, int mode, ...);
+// FUN_14040BCA0 is a runtime-function entry in 1.1.1.13. Its native callers pass
+// game/building in RCX/RDX, mode in R8D, colour selector in R9D, and an enable byte
+// in the fifth stack slot. Native colour selector 0 is green.
+using BuildingHighlightFn = void (__fastcall*)(u64 game, i64 building, int mode,
+                                               int colorSelector, int enabled);
 struct C3DVector3 { float x; float y; float z; };
 using Collision2DBBoxFn = bool (__fastcall*)(void* manager, C3DVector3* point,
                                              u32* outType, u32* outId,
@@ -408,7 +413,7 @@ static FactoryConnectionQueryFn g_originalFactoryConnectionQuery = nullptr;
 static ResourceTransferFn g_originalResourceTransfer = nullptr;
 static VectorGrowU64Fn g_vectorGrowU64 = nullptr;
 static AggregateStorageTouchFn g_aggregateStorageTouch = nullptr;
-static BuildingHighlightVarargFn g_buildingHighlight = nullptr;
+static BuildingHighlightFn g_buildingHighlight = nullptr;
 static Collision2DBBoxFn g_collision2DBBox = nullptr;
 static GetRotationStepFn g_getRotationStep = nullptr;
 static Vec3TransformCoordFn g_vec3TransformCoord = nullptr;
@@ -2184,11 +2189,9 @@ static u8* nearest_existing_annex_to_host_preview(void* game, u32 inputMask, u32
 
 static int queue_native_green_highlight(void* game, u8* building) {
     if (!game || !building || !g_buildingHighlight || !readable(building, 1)) return 0;
-    // This is the same native whole-building renderer used by WRSR itself. The
-    // first vararg is intentionally double-promoted: Windows x64 mirrors it into
-    // both R9 and XMM3, selecting native green (R9D=0) while supplying a valid
-    // interpolation value of 0.0f. The fifth native parameter is 1.
-    g_buildingHighlight((u64)game, (i64)building, 0, (double)0.0, (int)1);
+    // Match WRSR's own green-highlight call shape: mode=0, colour selector=0,
+    // and the fifth (enable) parameter set to 1.
+    g_buildingHighlight((u64)game, (i64)building, 0, 0, 1);
     return 1;
 }
 
@@ -4784,12 +4787,14 @@ extern "C" __declspec(dllexport) int TsmPluginInit(const void* hostPtr, TsmPlugi
 
     g_host = host;
     g_exeBase = host->exeBase;
-    // These two 1.1.1.9 RVAs resolve to the middle of unrelated/newly laid-out
-    // runtime functions in 1.1.1.13, not validated callable entries. Keep both
-    // optional presentation/refresh helpers disabled until their new signatures
-    // and calling conventions are independently identified.
+    // The old aggregate-storage refresh RVA is still unverified on 1.1.1.13.
+    // The native building-highlight renderer has now been mapped to its actual
+    // runtime-function entry and is admitted only when its prologue matches.
     g_aggregateStorageTouch = nullptr;
-    g_buildingHighlight = nullptr;
+    u8* highlightEntry = g_exeBase + RVA_BUILDING_HIGHLIGHT;
+    g_buildingHighlight = readable(highlightEntry, sizeof(BUILDING_HIGHLIGHT_EXPECTED)) &&
+        bytes_equal(highlightEntry, BUILDING_HIGHLIGHT_EXPECTED, sizeof(BUILDING_HIGHLIGHT_EXPECTED))
+        ? (BuildingHighlightFn)highlightEntry : nullptr;
     g_vectorGrowU64 = (VectorGrowU64Fn)(g_exeBase + RVA_VECTOR_GROW_U64);
     g_collision2DBBox = host->engineModule ? (Collision2DBBoxFn)((u8*)host->engineModule + RVA_C3D_COLLISION_2D_BBOX) : nullptr;
     g_getRotationStep = host->engineModule ? (GetRotationStepFn)((u8*)host->engineModule + RVA_C3D_GET_ROTATION_STEP) : nullptr;
@@ -4819,7 +4824,7 @@ extern "C" __declspec(dllexport) int TsmPluginInit(const void* hostPtr, TsmPlugi
         host->log("[EnhancedStorageManagement] C3D preview-footprint helpers unavailable; placement feedback will use the conservative cursor-origin fallback while completed storage-link mechanics remain active");
     }
     if (g_showPlacementOverlay && !g_buildingHighlight) {
-        host->log("[EnhancedStorageManagement] native building-highlight entry unavailable; placement feedback disabled while storage mechanics remain active");
+        host->log("[EnhancedStorageManagement] native building-highlight entry unavailable or signature mismatch; placement feedback disabled while storage mechanics remain active");
     }
     if (!g_vectorGrowU64) {
         host->log("[EnhancedStorageManagement] native temporary-vector grow helper unavailable; freight station connection-warning UI bridge will remain disabled fail-closed");
