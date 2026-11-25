@@ -37,12 +37,11 @@ The helper RVAs currently remain unchanged.
 These locations require semantic identification before any hook or function pointer is changed:
 
 - Aggregate storage touch: upstream RVA `0x17AF70` is not a function entry in the supplied executable; it falls inside `0x17AF2F–0x17AF8F`. The correct corresponding function still needs to be identified.
-- Building highlight: upstream RVA `0x40BD60` falls inside `0x40BCA0–0x40C34D`, rather than at a function entry. Its replacement must be mapped by call-site/semantic analysis.
 - Vector grow helper: `0xB1700` is a runtime-function entry (`0xB1700–0xB1782`). Its disassembly reads the vector begin/end/capacity fields, compares available pointer slots with the requested additional element count, computes a growth capacity, and tail-calls the allocation/growth routine. This matches the source call shape `VectorGrowU64Fn(vectorBeginField, extraElements)`; it is now considered semantically confirmed for the pointer-vector growth use.
 
 ## Fail-closed safety change
 
-Commit `7f55bb4174d41c7b6ea09e90cc7898c07d5aedcb` sets the aggregate-storage refresh and native building-highlight function pointers to null on 1.1.1.13. The old RVAs are inside runtime functions, not validated entries; calling them as functions could execute from the middle of unrelated instructions. With these helpers disabled, aggregate visual refresh and the optional green placement highlight are unavailable, but the code no longer calls those two unverified addresses.
+Commit `7f55bb4174d41c7b6ea09e90cc7898c07d5aedcb` originally set both optional helper pointers to null as a fail-closed measure. The aggregate-storage refresh helper remains disabled because its replacement is not yet mapped. The building-highlight pointer is now re-enabled only after the separate entry/ABI analysis documented below; the old `0x40BD60` address is still never called.
 
 The generic storage UI blocker was subsequently resolved by the ABI-based mapping documented below: source RVA `0x706DA0` now points to the matching runtime-function entry. The rejected `0x705380` candidate remains explicitly excluded.
 
@@ -207,3 +206,12 @@ The allocation vector's end pointer at descriptor `+0x20` is still not independe
 The connection-node mapping is based on the **game executable** `SOVIET64.exe`, not `C3DDLL64.dll`. The symbol-style address `FUN_1400BFF40` refers to VA `0x1400BFF40` in the executable (RVA `0x0BFF40`). Its disassembly begins with a function prologue at that address and iterates the pointer vector at object `+0x00/+0x08`. For each node pointer it reads the connection-metadata pointer at node `+0xE0`, then reads the native connection-kind code at metadata `+0x20`. The observed call sites in this function compare the code against values including `0x02`, `0x12`, `0x17`, `0x18`, and transport-related ranges; the source's specific 3/4, 5/6, 0x13/0x14, and 0x19/0x1A mapping still needs to be treated as a semantic mapping inferred from those comparisons and validated against live buildings.
 
 A separate disassembly at the same numerical RVA in `C3DDLL64.dll` resolves to an unrelated function because the DLL has a different image base and address space. That DLL observation does not invalidate the executable's `FUN_1400BFF40` evidence. The source node metadata path is therefore retained; this note corrects the binary attribution and records the distinction.
+
+
+## Native green building highlight: semantic mapping found
+
+The supplied `SOVIET64.exe` SHA-256 is `4df5fbecc75300e3b843ae4e6426761c84ae2e989321c011c6f560be79122125`. Its exception/unwind table (`.pdata`) identifies the runtime-function range `0x40BCA0–0x40C34D`. Therefore the old upstream address `0x40BD60` is inside that function and must not be called as an entry point, but the actual entry is `0x40BCA0`.
+
+Call-site analysis shows native callers invoke this entry with the game pointer in `RCX`, building pointer in `RDX`, mode in `R8D`, colour selector in `R9D`, and the fifth enable parameter in the first stack argument slot. Native callers use colour selector `0` for green; a representative whole-building call at VA `0x1403CB4AC` sets `R8D=0`, `R9D=0`, and the fifth parameter to `1`. The function's own colour-selection branch reads the saved `R9D` value and selects the green vector `(0,1,0,0.5)` for selector zero. Other selectors select the other native highlight colours.
+
+The source now uses the verified entry RVA `0x40BCA0`, checks its 18-byte prologue before enabling the optional feature, and calls it with `(game, building, 0, 0, 1)`. If the entry signature differs (for example, because another mod has detoured it), placement feedback remains disabled fail-closed. This is a static ABI/semantic mapping; the green highlight still requires an in-game test.
