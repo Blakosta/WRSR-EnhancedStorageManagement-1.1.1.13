@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - adaptation/1.1.1.13
+      - adaptation/1.2.0.8
   workflow_dispatch:
 
 permissions:
@@ -28,6 +29,6 @@ jobs:
       - name: Upload build package
         uses: actions/upload-artifact@v4
         with:
-          name: EnhancedStorageManagement-WRSR-1.1.1.13-candidate
+          name: EnhancedStorageManagement-WRSR-1.2.0.8-candidate
           path: out/runtime
           if-no-files-found: error
