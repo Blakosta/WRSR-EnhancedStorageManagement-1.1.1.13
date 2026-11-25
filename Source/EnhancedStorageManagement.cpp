@@ -121,10 +121,12 @@ static constexpr usize GAME_TEMP_CONNECTIONS_BEGIN = 0x14478ull;
 static constexpr usize GAME_TEMP_CONNECTIONS_END   = 0x14480ull;
 static constexpr usize GAME_TEMP_CONNECTIONS_CAP   = 0x14488ull;
 static constexpr usize BUILDING_TEMPLATE     = 0x318ull;
+// Position fields remain inherited from upstream and are not yet independently mapped.
 static constexpr usize BUILDING_POSITION_X   = 0x3A0ull;
 static constexpr usize BUILDING_POSITION_Y   = 0x3A4ull;
 static constexpr usize BUILDING_POSITION_Z   = 0x3A8ull;
 static constexpr usize BUILDING_COMPLETION   = 0x604ull;
+// 1.1.1.13 collision lookup at RVA 0x13819B reads building+0x5F4 as its instance ID.
 static constexpr usize BUILDING_INSTANCE_ID  = 0x5F4ull;
 static constexpr usize BUILDING_STORES_BEGIN = 0x970ull;
 static constexpr usize BUILDING_STORES_END   = 0x978ull;
