@@ -70,18 +70,18 @@ struct TsmHostCompat {
 
 static_assert(sizeof(TsmHostCompat) == 0x98, "Tesmio API 4 host ABI drift");
 
-// Target-build RVAs updated only where exact entry signatures were uniquely verified in WRSR 1.1.1.13.
-static constexpr usize RVA_BUILDING_SIMULATION_DISPATCH = 0x00139A70ull;
-static constexpr usize RVA_CONSTRUCTION_TOOL_FRAME      = 0x002F0E90ull;
-static constexpr usize RVA_GENERIC_STORAGE_UI           = 0x00706DA0ull;
-static constexpr usize RVA_FACTORY_CONNECTION_QUERY     = 0x00422BC0ull;
-static constexpr usize RVA_RESOURCE_TRANSFER              = 0x00420290ull;
-static constexpr usize RVA_VECTOR_GROW_U64              = 0x000B1700ull;
-static constexpr usize RVA_BUILDING_HIGHLIGHT              = 0x0040BCA0ull;
-static constexpr usize RVA_GAME_ROOT_SLOT               = 0x009941F0ull;
-static constexpr usize RVA_C3D_COLLISION_2D_BBOX        = 0x0003E350ull;
-static constexpr usize RVA_C3D_GET_ROTATION_STEP        = 0x0003A050ull;
-static constexpr usize RVA_C3D_VEC3_TRANSFORM_COORD     = 0x000A1300ull;
+// WRSR 1.2.0.8 RVAs. Each active hook target is checked against its expected entry bytes.
+static constexpr usize RVA_BUILDING_SIMULATION_DISPATCH = 0x00152520ull;
+static constexpr usize RVA_CONSTRUCTION_TOOL_FRAME      = 0x0030DBC0ull;
+static constexpr usize RVA_GENERIC_STORAGE_UI           = 0x0073CA40ull;
+static constexpr usize RVA_FACTORY_CONNECTION_QUERY     = 0x00446B40ull;
+static constexpr usize RVA_RESOURCE_TRANSFER              = 0x00444210ull;
+static constexpr usize RVA_VECTOR_GROW_U64              = 0x00000000ull;
+static constexpr usize RVA_BUILDING_HIGHLIGHT              = 0x00000000ull;
+static constexpr usize RVA_GAME_ROOT_SLOT               = 0x009DDC88ull;
+static constexpr usize RVA_C3D_COLLISION_2D_BBOX        = 0x0003E410ull;
+static constexpr usize RVA_C3D_GET_ROTATION_STEP        = 0x0003A0E0ull;
+static constexpr usize RVA_C3D_VEC3_TRANSFORM_COORD     = 0x000A13E0ull;
 static constexpr usize ABSOLUTE_ENTRY_BRIDGE_SPAN       = 14ull;
 static constexpr usize DISPATCH_HOOK_SPAN               = 19ull;
 static constexpr usize CONSTRUCTION_HOOK_SPAN           = 14ull;
@@ -108,8 +108,8 @@ static const u8 BUILDING_HIGHLIGHT_EXPECTED[] = {
 };
 
 // Layout values originated in upstream 1.1.1.9; verified 1.1.1.13 fields are documented in docs/BINARY_ANALYSIS_1.1.1.13.md.
-static constexpr usize GAME_BUILDINGS_BEGIN = 0x11B08ull;
-static constexpr usize GAME_BUILDINGS_END   = 0x11B10ull;
+static constexpr usize GAME_BUILDINGS_BEGIN = 0x11E70ull;
+static constexpr usize GAME_BUILDINGS_END   = 0x11E78ull;
 static constexpr usize GAME_CURRENT_TOOL     = 0x0D428ull;
 static constexpr usize GAME_TOOLS_BEGIN      = 0x0D280ull;
 static constexpr usize GAME_TOOLS_END        = 0x0D288ull;
@@ -121,9 +121,9 @@ static constexpr usize GAME_CURSOR_ROTATION  = 0x00F94ull;
 // FUN_140422C30 resets/fills this temporary std::vector<building*> every query.
 // FUN_1407CDC40 uses it only to decide whether the cargo station should display
 // language ID 0x712: "This building has no connection to warehouses or factories!".
-static constexpr usize GAME_TEMP_CONNECTIONS_BEGIN = 0x14478ull;
-static constexpr usize GAME_TEMP_CONNECTIONS_END   = 0x14480ull;
-static constexpr usize GAME_TEMP_CONNECTIONS_CAP   = 0x14488ull;
+static constexpr usize GAME_TEMP_CONNECTIONS_BEGIN = 0x14528ull;
+static constexpr usize GAME_TEMP_CONNECTIONS_END   = 0x14530ull;
+static constexpr usize GAME_TEMP_CONNECTIONS_CAP   = 0x14538ull;
 static constexpr usize BUILDING_TEMPLATE     = 0x318ull;
 // Position fields remain inherited from upstream and are not yet independently mapped.
 static constexpr usize BUILDING_POSITION_X   = 0x3A0ull;
@@ -176,7 +176,7 @@ static constexpr i32 BUILDING_TYPE_RAIL_DISTRIBUTION_OFFICE = 0x34;
 static constexpr i32 BUILDING_TYPE_HEATING_PLANT = 0x46;
 static constexpr i32 BUILDING_TYPE_REPAIR_OFFICE = 0x6C;
 static constexpr usize TEMPLATE_COLLISION_TYPE = 0x410ull;
-static constexpr usize GAME_C3D_BUILDING_MANAGER = 0xFF8ull;
+static constexpr usize GAME_C3D_BUILDING_MANAGER = 0x1098ull;
 
 // Cargo loaders/unloaders are direct proximity annex gateways. Their
 // resource-flow direction is derived from each building type's own C3D
@@ -4861,14 +4861,14 @@ extern "C" __declspec(dllexport) int TsmPluginInit(const void* hostPtr, TsmPlugi
     g_host = host;
     g_exeBase = host->exeBase;
     // The old aggregate-storage refresh RVA is still unverified on 1.1.1.13.
-    // The native building-highlight renderer has now been mapped to its actual
-    // runtime-function entry and is admitted only when its prologue matches.
+    // Native building-highlight and temporary-vector growth entries are not yet
+    // mapped for 1.2.0.8. Keep those optional integrations disabled fail-closed.
     g_aggregateStorageTouch = nullptr;
-    u8* highlightEntry = g_exeBase + RVA_BUILDING_HIGHLIGHT;
-    g_buildingHighlight = readable(highlightEntry, sizeof(BUILDING_HIGHLIGHT_EXPECTED)) &&
+    u8* highlightEntry = RVA_BUILDING_HIGHLIGHT ? g_exeBase + RVA_BUILDING_HIGHLIGHT : nullptr;
+    g_buildingHighlight = highlightEntry && readable(highlightEntry, sizeof(BUILDING_HIGHLIGHT_EXPECTED)) &&
         bytes_equal(highlightEntry, BUILDING_HIGHLIGHT_EXPECTED, sizeof(BUILDING_HIGHLIGHT_EXPECTED))
         ? (BuildingHighlightFn)highlightEntry : nullptr;
-    g_vectorGrowU64 = (VectorGrowU64Fn)(g_exeBase + RVA_VECTOR_GROW_U64);
+    g_vectorGrowU64 = RVA_VECTOR_GROW_U64 ? (VectorGrowU64Fn)(g_exeBase + RVA_VECTOR_GROW_U64) : nullptr;
     g_collision2DBBox = host->engineModule ? (Collision2DBBoxFn)((u8*)host->engineModule + RVA_C3D_COLLISION_2D_BBOX) : nullptr;
     g_getRotationStep = host->engineModule ? (GetRotationStepFn)((u8*)host->engineModule + RVA_C3D_GET_ROTATION_STEP) : nullptr;
     g_vec3TransformCoord = host->engineModule ? (Vec3TransformCoordFn)((u8*)host->engineModule + RVA_C3D_VEC3_TRANSFORM_COORD) : nullptr;
