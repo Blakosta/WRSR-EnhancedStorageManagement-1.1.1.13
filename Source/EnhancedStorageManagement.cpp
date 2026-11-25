@@ -3953,6 +3953,40 @@ static int scan_world_candidates(void* game, u32* outLaneCount, u32* outStorageC
         add_storage_delivery_host_lane(candidate->building, candidate->store, candidate->transport, &laneCount);
     }
 
+    // One compact diagnostic snapshot whenever the live building count changes.
+    // This reveals whether the fuel station becomes a host lane and whether the
+    // nearby cistern becomes an oil storage candidate, without changing pairing rules.
+    static usize lastFuelDiagBuildingCount = (usize)-1;
+    if (lastFuelDiagBuildingCount != buildingCount && g_host && g_host->log) {
+        lastFuelDiagBuildingCount = buildingCount;
+        u32 oilCandidates = 0, oilLanes = 0;
+        g_host->log("[EnhancedStorageManagement][diag] world scan: buildings=%u lanes=%u storages=%u",
+                    (u32)buildingCount, laneCount, storageCount);
+        for (u32 i = 0; i < storageCount; ++i) {
+            StorageCandidate* c = &g_storages[i];
+            if (c->transport != TRANSPORT_OIL) continue;
+            ++oilCandidates;
+            u8* ct = building_template(c->building);
+            i32 ctype = -1;
+            if (ct) template_building_type(ct, &ctype);
+            g_host->log("[EnhancedStorageManagement][diag] oil candidate: type=%d role=%d capacity=%.2f gateway=%d blueprint=%d",
+                        ctype, read_i32(c->store + STORE_ROLE),
+                        read_f32(c->store + STORE_CAPACITY), c->cargoGateway, c->blueprintOnly);
+        }
+        for (u32 i = 0; i < laneCount; ++i) {
+            HostLane* l = &g_hostLanes[i];
+            if (l->transport != TRANSPORT_OIL) continue;
+            ++oilLanes;
+            u8* lt = building_template(l->building);
+            i32 ltype = -1;
+            if (lt) template_building_type(lt, &ltype);
+            g_host->log("[EnhancedStorageManagement][diag] oil host lane: type=%d role=%d capacity=%.2f mode=%d",
+                        ltype, read_i32(l->hostStore + STORE_ROLE),
+                        read_f32(l->hostStore + STORE_CAPACITY), (int)l->mode);
+        }
+        g_host->log("[EnhancedStorageManagement][diag] oil totals: candidates=%u host_lanes=%u",
+                    oilCandidates, oilLanes);
+    }
     if (laneCount >= MAX_HOST_LANES && !g_overflowLogged && g_host && g_host->log) {
         g_host->log("[EnhancedStorageManagement] host-lane candidate limit reached; additional compatible lanes ignored");
         g_overflowLogged = 1;
