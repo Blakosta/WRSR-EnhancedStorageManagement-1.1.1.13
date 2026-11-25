@@ -110,17 +110,17 @@ static const u8 BUILDING_HIGHLIGHT_EXPECTED[] = {
     0x40,0x55,0x53,0x56,0x57,0x48,0x8D,0xAC,0x24,0xF8,0xE5,0xFF,0xFF,0xB8,0x08,0x1B,0x00,0x00
 };
 
-// Layout values originated in upstream 1.1.1.9; verified 1.1.1.13 fields are documented in docs/BINARY_ANALYSIS_1.1.1.13.md.
+// 1.2.0.8 layout fields corroborated in the supplied executable are recorded in docs/BINARY_ANALYSIS_1.2.0.8.md.
 static constexpr usize GAME_BUILDINGS_BEGIN = 0x11E70ull;
 static constexpr usize GAME_BUILDINGS_END   = 0x11E78ull;
-static constexpr usize GAME_CURRENT_TOOL     = 0x0D428ull;
+static constexpr usize GAME_CURRENT_TOOL     = 0x0D4C0ull;
 static constexpr usize GAME_TOOLS_BEGIN      = 0x0D280ull;
 static constexpr usize GAME_TOOLS_END        = 0x0D288ull;
 static constexpr usize TOOL_STRIDE           = 0x2D0ull;
-static constexpr usize GAME_CURSOR_X         = 0x00F6Cull;
-static constexpr usize GAME_CURSOR_Y         = 0x00F70ull;
-static constexpr usize GAME_CURSOR_Z         = 0x00F74ull;
-static constexpr usize GAME_CURSOR_ROTATION  = 0x00F94ull;
+static constexpr usize GAME_CURSOR_X         = 0x00F90ull;
+static constexpr usize GAME_CURSOR_Y         = 0x00F94ull;
+static constexpr usize GAME_CURSOR_Z         = 0x00F98ull;
+static constexpr usize GAME_CURSOR_ROTATION  = 0x00F9Cull;
 // FUN_140422C30 resets/fills this temporary std::vector<building*> every query.
 // FUN_1407CDC40 uses it only to decide whether the cargo station should display
 // language ID 0x712: "This building has no connection to warehouses or factories!".
@@ -133,13 +133,13 @@ static constexpr usize BUILDING_POSITION_X   = 0x3A0ull;
 static constexpr usize BUILDING_POSITION_Y   = 0x3A4ull;
 static constexpr usize BUILDING_POSITION_Z   = 0x3A8ull;
 static constexpr usize BUILDING_COMPLETION   = 0x604ull;
-// 1.1.1.13 collision lookup at RVA 0x13819B reads building+0x5F4 as its instance ID.
+// 1.2.0.8 simulation dispatch reads building+0x5F4 as its C3D instance ID.
 static constexpr usize BUILDING_INSTANCE_ID  = 0x5F4ull;
 static constexpr usize BUILDING_STORES_BEGIN = 0x970ull;
 static constexpr usize BUILDING_STORES_END   = 0x978ull;
 static constexpr usize TOOL_TEMPLATE          = 0x48ull;
-// Building-definition layout carried over from upstream. The 1.1.1.13 runtime
-// simulation dispatcher confirms the authoritative building class at +0x360:
+// Building-definition layout: the 1.2.0.8 runtime simulation dispatcher reads
+// the building class at template+0x368:
 // 5=$TYPE_STORAGE, 6=$TYPE_FACTORY, 7=$TYPE_MINE_*.  Do NOT use the
 // building-editor type-table/index at +0x5E0/+0x610 for loaded native
 // definitions. FUN_140177010 reads the live recipe vectors directly from the
@@ -148,7 +148,7 @@ static constexpr usize TOOL_TEMPLATE          = 0x48ull;
 // rate is at +0x08, output rate at +0x0C. Storage compatibility is
 // deliberately NOT read from a template-side descriptor table: live building
 // instances expose the authoritative 0xE0 storage descriptors at +0x970.
-static constexpr usize TEMPLATE_RUNTIME_TYPE     = 0x360ull;
+static constexpr usize TEMPLATE_RUNTIME_TYPE     = 0x368ull;
 static constexpr usize TEMPLATE_CONSUME_BEGIN    = 0x688ull;
 static constexpr usize TEMPLATE_CONSUME_END      = 0x690ull;
 static constexpr usize TEMPLATE_PRODUCE_BEGIN    = 0x6B8ull;
@@ -184,8 +184,7 @@ static constexpr usize GAME_C3D_BUILDING_MANAGER = 0x1098ull;
 // Cargo loaders/unloaders are direct proximity annex gateways. Their
 // resource-flow direction is derived from each building type's own C3D
 // connection-node metadata, not from traversing live network paths.
-// C3DDLL64 1.1.1.13 C3D_BUILDING layout, revalidated in Collision2DBBox,
-// GetRotationStepFromRotation and EditorSetCursorUpdateCopy.
+// C3DDLL64 1.2.0.8 C3D_BUILDING layout, verified against the exported helper entries.
 static constexpr usize C3D_ROTATION_STEP_COUNT = 0x48ull;
 static constexpr usize C3D_ROT_MATRIX_FWD_BASE = 0x54ull;
 static constexpr usize C3D_ROT_MATRIX_INV_BASE = 0x94ull;
