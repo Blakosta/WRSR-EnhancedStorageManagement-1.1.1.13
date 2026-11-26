@@ -888,6 +888,26 @@ static int building_is_runtime_type(u8* building, i32 wantedType);
 static u8* template_store_for_live_store(u8* building, u8* liveStore, i32 expectedTransport);
 static int authored_capacity_for_live_store(u8* building, u8* liveStore,
                                             i32 expectedTransport, float* outCapacity);
+
+// Empty live buffers are common for newly built cisterns and service tanks.
+// Their immutable template descriptor is the authoritative resource contract
+// until the first delivery creates runtime resource records.
+static int store_has_pool_resources_for_building(u8* building, u8* store) {
+    if (store_has_pool_resources(store)) return 1;
+    if (!building || !store || !readable(store, STORE_STRIDE)) return 0;
+    i32 transport = read_i32(store + STORE_TRANSPORT);
+    u8* blueprint = template_store_for_live_store(building, store, transport);
+    if (!blueprint) return 0;
+    u64 begin = read_u64(blueprint + STORE_RECORDS_BEGIN);
+    u64 end = read_u64(blueprint + STORE_RECORDS_END);
+    usize count = 0;
+    if (!valid_vector(begin, end, RECORD_STRIDE, MAX_POOL_RESOURCES, &count)) return 0;
+    for (usize i = 0; i < count; ++i) {
+        u8* resource = (u8*)read_u64((u8*)begin + i * RECORD_STRIDE + RECORD_RESOURCE);
+        if (resource && resource_coefficient(resource, transport) > 0.0f) return 1;
+    }
+    return 0;
+}
 static int fuel_service_type(i32 type);
 static float group_resource_capacity_for_mechanics(u8* hostStore, u8* resource);
 static int template_has_native_fuel_store(u8* templ);
@@ -920,14 +940,14 @@ static int annex_building_store_eligible(u8* building, u8* store) {
     // deliberately transport-generic across the supported WRSR storage classes,
     // including refrigerated (5) and livestock (6), so Workshop storage variants
     // do not need a name/ID allow-list.
-    if (type == BUILDING_TYPE_STORAGE) return store_has_pool_resources(store);
+    if (type == BUILDING_TYPE_STORAGE) return store_has_pool_resources_for_building(building, store);
 
     if (type == BUILDING_TYPE_WATER_PUMP && transport == TRANSPORT_WATER &&
-        cap >= WATER_TANK_MIN_CAPACITY && template_engine_idle(templ)) return store_has_pool_resources(store);
+        cap >= WATER_TANK_MIN_CAPACITY && template_engine_idle(templ)) return store_has_pool_resources_for_building(building, store);
     if (type == BUILDING_TYPE_TRASH_CONTAINER && transport == TRANSPORT_WASTE) {
         i32 role = read_i32(store + STORE_ROLE);
         return role == STORE_ROLE_TRASH_SMALL || role == STORE_ROLE_TRASH_BIG ||
-               role == STORE_ROLE_IMPORT_SPECIAL_TRASH_BIG || store_has_pool_resources(store);
+               role == STORE_ROLE_IMPORT_SPECIAL_TRASH_BIG || store_has_pool_resources_for_building(building, store);
     }
     return 0;
 }
@@ -1193,16 +1213,31 @@ static int lane_accepts_resource(const HostLane* lane, u8* resource) {
     return 1;
 }
 
-static int lane_annex_store_overlap(const HostLane* lane, u8* annexStore) {
-    if (!lane || !annexStore || !readable(annexStore, STORE_STRIDE)) return 0;
+static int lane_annex_store_overlap(const HostLane* lane, u8* annexBuilding, u8* annexStore) {
+    if (!lane || !annexBuilding || !annexStore || !readable(annexStore, STORE_STRIDE)) return 0;
     if (read_i32(annexStore + STORE_TRANSPORT) != lane->transport) return 0;
     u64 begin = read_u64(annexStore + STORE_RECORDS_BEGIN);
     u64 end = read_u64(annexStore + STORE_RECORDS_END);
     usize count = 0;
-    if (!valid_vector(begin, end, RECORD_STRIDE, MAX_POOL_RESOURCES, &count) || count == 0) return 0;
+    if (!valid_vector(begin, end, RECORD_STRIDE, MAX_POOL_RESOURCES, &count)) return 0;
     for (usize i = 0; i < count; ++i) {
         u8* resource = (u8*)read_u64((u8*)begin + i * RECORD_STRIDE + RECORD_RESOURCE);
         if (resource && lane_accepts_resource(lane, resource)) return 1;
+    }
+    // For an empty cistern, compare the immutable template resource list.
+    // This keeps the same exact-resource rule; it does not broaden transport
+    // compatibility or introduce new connection types.
+    if (count == 0) {
+        u8* blueprint = template_store_for_live_store(annexBuilding, annexStore, lane->transport);
+        if (!blueprint) return 0;
+        u64 bb = read_u64(blueprint + STORE_RECORDS_BEGIN);
+        u64 be = read_u64(blueprint + STORE_RECORDS_END);
+        usize bc = 0;
+        if (!valid_vector(bb, be, RECORD_STRIDE, MAX_POOL_RESOURCES, &bc) || bc == 0) return 0;
+        for (usize i = 0; i < bc; ++i) {
+            u8* resource = (u8*)read_u64((u8*)bb + i * RECORD_STRIDE + RECORD_RESOURCE);
+            if (resource && lane_accepts_resource(lane, resource)) return 1;
+        }
     }
     return 0;
 }
@@ -3552,7 +3587,7 @@ static void add_production_waste_lanes(u8* building, u32* laneCount) {
     if (!building_store_vector(building, &sb, &sc)) return;
     for (usize i = 0; i < sc; ++i) {
         u8* store = (u8*)(sb + i * STORE_STRIDE);
-        if (read_i32(store + STORE_TRANSPORT) != TRANSPORT_WASTE || !store_has_pool_resources(store)) continue;
+        if (read_i32(store + STORE_TRANSPORT) != TRANSPORT_WASTE || !store_has_pool_resources_for_building(building, store)) continue;
         if (!store_direction_matches(store, ANNEX_OUTPUT)) continue;
         add_host_lane(building, store, TRANSPORT_WASTE, ANNEX_OUTPUT, laneCount);
     }
@@ -4026,7 +4061,7 @@ static int candidate_lane_structurally_compatible(void* game, StorageCandidate* 
     // A freight gateway's live routing records are transient and change with cargo.
     // Transport class is the stable capability boundary; using current routing
     // contents here would make an established station relationship flap on/off.
-    if (!candidate->cargoGateway && !lane_annex_store_overlap(lane, candidate->store)) return 0;
+    if (!candidate->cargoGateway && !lane_annex_store_overlap(lane, candidate->building, candidate->store)) return 0;
     float sq = 0.0f;
     if (!lane_annex_gap_sq(game, lane, candidate, &sq) || sq > g_linkGapSq) return 0;
     if (outGapSq) *outGapSq = sq;
