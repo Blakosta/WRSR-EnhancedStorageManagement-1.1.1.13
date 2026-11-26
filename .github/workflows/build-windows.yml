@@ -16,28 +16,9 @@ jobs:
     steps:
       - name: Checkout mod source
         uses: actions/checkout@v4
-      - name: Checkout exact 1.2.0.8 reference binaries
-        uses: actions/checkout@v4
-        with:
-          repository: Blakosta/WRSR-EfficientLogistics1.2.0.8.
-          ref: main
-          path: reference-binaries
-      - name: Verify reference binary identity
-        shell: pwsh
-        run: |
-          $expected = @{
-            "SOVIET64.exe" = "91a2ff66fd02e02a51f38f4d2106ccb56af9510af9a6fb7e7b93ae4249358ea7"
-            "C3DDLL64.dll" = "331895c798092c1c24d8d7586631d8c514bcb0070dcb0d189eca7cf29ba8a483"
-          }
-          foreach ($name in $expected.Keys) {
-            $path = Join-Path "reference-binaries" $name
-            if (!(Test-Path $path)) { throw "Missing reference binary: $name" }
-            $actual = (Get-FileHash -Algorithm SHA256 $path).Hash.ToLowerInvariant()
-            if ($actual -ne $expected[$name]) {
-              throw "$name SHA-256 mismatch: expected $($expected[$name]), got $actual"
-            }
-            Write-Host "$name SHA-256 OK: $actual"
-          }
+      # The exact reference binaries are held in a separate private repository.
+      # GitHub Actions' repository-scoped token cannot clone that private repo;
+      # binary-specific analysis must be performed in the connected GitHub workspace.
       - name: Install LLVM
         shell: pwsh
         run: choco install llvm --yes --no-progress
