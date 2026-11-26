@@ -1224,12 +1224,12 @@ static int valid_capacity_store(u8* store, i32 expectedTransport, float* outCapa
     return 1;
 }
 
-static int building_center(u8* building, C3DVector3* out);
+static int building_center(void* game, u8* building, C3DVector3* out);
  
-static int position_distance_sq(u8* a, u8* b, float* outSq) {
-    if (!a || !b || !outSq) return 0;
+static int position_distance_sq(void* game, u8* a, u8* b, float* outSq) {
+    if (!game || !a || !b || !outSq) return 0;
     C3DVector3 pa{}, pb{};
-    if (!building_center(a, &pa) || !building_center(b, &pb)) return 0;
+    if (!building_center(game, a, &pa) || !building_center(game, b, &pb)) return 0;
     if (abs_f(pa.y - pb.y) > g_verticalLimit) return 0;
     float dx = pa.x - pb.x;
     float dz = pa.z - pb.z;
@@ -1243,7 +1243,7 @@ static int cursor_distance_sq(void* game, u8* building, float* outSq) {
     if (!game || !building || !outSq) return 0;
     u8* world = (u8*)game;
     C3DVector3 buildingPos{};
-    if (!readable(world + GAME_CURSOR_X, 12) || !building_center(building, &buildingPos)) return 0;
+    if (!readable(world + GAME_CURSOR_X, 12) || !building_center(game, building, &buildingPos)) return 0;
     float cx = read_f32(world + GAME_CURSOR_X);
     float cy = read_f32(world + GAME_CURSOR_Y);
     float cz = read_f32(world + GAME_CURSOR_Z);
@@ -1634,11 +1634,11 @@ static int point_hits_building(void* game, u8* target, const C3DVector3* point, 
     return hit && hitType == targetType && hitId == targetId;
 }
 
-static int building_center(u8* building, C3DVector3* out) {
+static int building_center(void* game, u8* building, C3DVector3* out) {
     static int loggedTypeFailure = 0, loggedVectorFailure = 0, loggedInstanceFailure = 0, loggedSuccess = 0;
     if (!building || !out || !readable(building + BUILDING_INSTANCE_ID, sizeof(i32))) return 0;
     u8* templ = building_template(building);
-    u8* type = templ ? c3d_type_for_template(nullptr, templ) : nullptr;
+    u8* type = templ ? c3d_type_for_template(game, templ) : nullptr;
     if (!type || !readable(type + C3D_TYPE_INSTANCES_END, sizeof(u64))) {
         if (!loggedTypeFailure && g_host && g_host->log) {
             g_host->log("[EnhancedStorageManagement][diag] building centre: C3D type lookup failed (building=%p template=%p)", building, templ);
@@ -1730,9 +1730,9 @@ static int boundary_from_inside(void* game, u8* target, u8* ignore,
 static int pair_footprint_gap_sq_collision_ray_fallback(void* game, u8* host, u8* storage, float* outSq) {
     if (!game || !host || !storage || !outSq) return 0;
     float centreSq = 0.0f;
-    if (!position_distance_sq(host, storage, &centreSq) || centreSq > g_coarseCandidateRadiusSq) return 0;
+    if (!position_distance_sq(game, host, storage, &centreSq) || centreSq > g_coarseCandidateRadiusSq) return 0;
     C3DVector3 hostCenter = {}, storageCenter = {};
-    if (!building_center(host, &hostCenter) || !building_center(storage, &storageCenter)) return 0;
+    if (!building_center(game, host, &hostCenter) || !building_center(game, storage, &storageCenter)) return 0;
     if (abs_f(hostCenter.y - storageCenter.y) > g_verticalLimit) return 0;
 
     C3DVector3 hostEdge = {}, storageEdge = {};
@@ -2035,7 +2035,7 @@ static int preview_pair_footprint_gap_sq_collision_ray_fallback(void* game, cons
     float centreSq = 0.0f;
     if (!cursor_distance_sq(game, host, &centreSq) || centreSq > g_coarseCandidateRadiusSq) return 0;
     C3DVector3 hostCenter = {};
-    if (!building_center(host, &hostCenter)) return 0;
+    if (!building_center(game, host, &hostCenter)) return 0;
     if (abs_f(hostCenter.y - preview.origin.y) > g_verticalLimit) return 0;
 
     C3DVector3 hostEdge = {}, previewEdge = {};
@@ -2083,7 +2083,7 @@ static int cursor_footprint_gap_sq_fallback(void* game, u8* host, float* outSq) 
     float centreSq = 0.0f;
     if (!cursor_distance_sq(game, host, &centreSq) || centreSq > g_coarseCandidateRadiusSq) return 0;
     C3DVector3 hostCenter = {}, cursor = {};
-    if (!building_center(host, &hostCenter) || !readable((u8*)game + GAME_CURSOR_X, 12)) return 0;
+    if (!building_center(game, host, &hostCenter) || !readable((u8*)game + GAME_CURSOR_X, 12)) return 0;
     cursor.x = read_f32((u8*)game + GAME_CURSOR_X);
     cursor.y = read_f32((u8*)game + GAME_CURSOR_Y);
     cursor.z = read_f32((u8*)game + GAME_CURSOR_Z);
