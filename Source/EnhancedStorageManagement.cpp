@@ -2463,7 +2463,7 @@ static int state_layout_valid(AnnexState* s) {
     // stable validity boundary for an established delivery relationship.
     if (building_is_runtime_type(s->storage, BUILDING_TYPE_CARGO_STATION)) return 1;
     HostLane lane = {s->host, s->hostStore, s->transport, s->mode, HOST_RESOURCE_ROOT, 0, 0, 0};
-    return lane_annex_store_overlap(&lane, s->annexStore);
+    return lane_annex_store_overlap(&lane, s->storage, s->annexStore);
 }
 
 static int validate_allocation_policy(u8* store) {
@@ -2523,10 +2523,10 @@ static int annex_resource_allowed(u8* annexStore, u8* resource) {
     return !active || weight > 0.000001f;
 }
 
-static int annex_selection_matches_lane(const HostLane* lane, u8* annexStore,
+static int annex_selection_matches_lane(const HostLane* lane, u8* annexBuilding, u8* annexStore,
                                         int trashContainer, int* outHasEvidence) {
     if (outHasEvidence) *outHasEvidence = 0;
-    if (!lane || !annexStore || !lane_annex_store_overlap(lane, annexStore)) return 0;
+    if (!lane || !annexBuilding || !annexStore || !lane_annex_store_overlap(lane, annexBuilding, annexStore)) return 0;
 
     if (trashContainer) {
         // Trash-container descriptors represent concrete waste classes. Their
@@ -3397,7 +3397,7 @@ static void apply_pool_pair(void* game, HostLane* lane, StorageCandidate* storag
     } else if ((storage->modeMask & lane_mode_mask(lane->mode)) == 0) {
         return;
     }
-    if (!storage->cargoGateway && !lane_annex_store_overlap(lane, storage->store)) return;
+    if (!storage->cargoGateway && !lane_annex_store_overlap(lane, storage->building, storage->store)) return;
 
     // If an ordinary storage that was previously acting as a standalone freight
     // root is now annexed to a production/resource root, collapse that topology
@@ -3451,7 +3451,7 @@ static void apply_pool_pair(void* game, HostLane* lane, StorageCandidate* storag
     u8* storageTempl = building_template(storage->building);
     if (!storageTempl || !template_building_type(storageTempl, &storageType)) return;
     int trashContainer = storageType == BUILDING_TYPE_TRASH_CONTAINER;
-    if (!storage->cargoGateway && !annex_selection_matches_lane(lane, storage->store, trashContainer, nullptr)) return;
+    if (!storage->cargoGateway && !annex_selection_matches_lane(lane, storage->building, storage->store, trashContainer, nullptr)) return;
 
     AnnexState* s = allocate_state_for_lane(lane);
     if (!s) return;
@@ -3636,7 +3636,7 @@ static void add_shop_pub_lanes(u8* building, u32* laneCount) {
     for (usize i = 0; i < sc; ++i) {
         u8* store = (u8*)(sb + i * STORE_STRIDE);
         i32 transport = read_i32(store + STORE_TRANSPORT);
-        if (!supported_annex_transport(transport) || !store_has_pool_resources(store)) continue;
+        if (!supported_annex_transport(transport) || !store_has_pool_resources_for_building(building, store)) continue;
         add_host_lane(building, store, transport, ANNEX_INPUT, laneCount);
     }
 }
@@ -3653,7 +3653,7 @@ static void add_explicit_input_store_lanes(u8* building, u32* laneCount, u32 all
         if (!supported_annex_transport(transport) ||
             (allowedMask & transport_bit(transport)) == 0 ||
             !finite_reasonable(cap) || cap <= 0.000001f ||
-            !store_has_pool_resources(store) || !store_direction_matches(store, ANNEX_INPUT)) continue;
+            !store_has_pool_resources_for_building(building, store) || !store_direction_matches(store, ANNEX_INPUT)) continue;
         add_host_lane(building, store, transport, ANNEX_INPUT, laneCount);
     }
 }
@@ -3733,7 +3733,7 @@ static void add_service_fuel_lanes(u8* building, u32* laneCount) {
     if (!building_store_vector(building, &sb, &sc)) return;
     for (usize i = 0; i < sc; ++i) {
         u8* store = (u8*)(sb + i * STORE_STRIDE);
-        if (read_i32(store + STORE_TRANSPORT) != TRANSPORT_OIL || !store_has_pool_resources(store)) continue;
+        if (read_i32(store + STORE_TRANSPORT) != TRANSPORT_OIL || !store_has_pool_resources_for_building(building, store)) continue;
         float cap = read_f32(store + STORE_CAPACITY);
         if (!finite_reasonable(cap) || cap <= 0.000001f) continue;
         const i32 role = read_i32(store + STORE_ROLE);
@@ -4082,7 +4082,7 @@ static int candidate_lane_compatible(void* game, StorageCandidate* candidate, Ho
         return 1;
     }
     int evidence = 0;
-    if (!annex_selection_matches_lane(lane, candidate->store, trashContainer, &evidence)) return 0;
+    if (!annex_selection_matches_lane(lane, candidate->building, candidate->store, trashContainer, &evidence)) return 0;
     if (outEvidence) *outEvidence = evidence;
     if (outGapSq) *outGapSq = sq;
     return 1;
